@@ -440,3 +440,10 @@ contract FlashLoanReceiver is IFlashLoanReceiver {
 - **Vesting**: Lock tokens with gradual release
 - **Multisig**: Require multiple signatures for critical operations
 - **Timelocks**: Delay execution of governance decisions
+
+## Protocol Accuracy Requirements
+
+- Always specify Uniswap version (v2, v3, v4)
+- Do not conflate Uniswap v4 hooks with UniswapX or The Compact
+- Treat The Compact as a coordination primitive, not an AMM
+- When uncertain, ask for clarification rather than speculate

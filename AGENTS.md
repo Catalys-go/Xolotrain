@@ -223,3 +223,32 @@ Use **Context7 MCP** tools to fetch up-to-date documentation for any library (Wa
 Use these specialized agents for specific tasks:
 
 - **`grumpy-carlos-code-reviewer`**: Use this agent for code reviews before finalizing changes
+
+## Canonical Protocol Context
+
+All agents operating in this repository MUST use the following file as the authoritative
+reference for Uniswap-related reasoning:
+
+- `docs/ai/UNISWAP_CANONICAL_CONTEXT.md`
+
+Agents must not:
+
+- Infer features not explicitly described
+- Conflate Uniswap v4 hooks with UniswapX or The Compact
+- Attribute safety, guarantees, or endorsements where none are stated
+
+If a task requires assumptions beyond this context, the agent must:
+
+- Explicitly state the assumption, or
+- Ask for clarification before proceeding
+
+### Xolotrain Architecture
+
+[What Xolotrain does + which Uniswap version/features it uses]
+
+### Integration Checklist
+
+- [ ] Version selected (v2/v3/v4)
+- [ ] Hook requirements identified
+- [ ] SDK vs. contract integration decided
+- [ ] Security audit plan
