@@ -4,7 +4,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
  * @example
  * const externalContracts = {
  *   1: {
- *     DAI: {
+ *     USDT: {
  *       address: "0x...",
  *       abi: [...],
  *     },
