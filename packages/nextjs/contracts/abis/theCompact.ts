@@ -1,3 +1,7 @@
+// NOTE:
+// This ABI should match the compiled artifact at: ./out/TheCompact.sol/TheCompact.json
+// Avoid hand-editing entries to “match names”. If consumers expect a different symbol name,
+// export an alias (see bottom of file) instead of deleting/modifying ABI items.
 export const THE_COMPACT_ABI = [
   {
     inputs: [
@@ -1052,5 +1056,10 @@ export const THE_COMPACT_ABI = [
     type: "function",
   },
 ] as const;
+
+// Aliases to prevent consumers from requiring manual ABI edits.
+// Prefer importing one of these instead of modifying the ABI array.
+export const TheCompactABI = THE_COMPACT_ABI;
+export const theCompactAbi = THE_COMPACT_ABI;
 
 export default THE_COMPACT_ABI;
