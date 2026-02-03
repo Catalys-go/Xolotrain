@@ -19,7 +19,6 @@ export const Tokens = {
       decimals: 6,
     },
     USDT: {
-      // TODO: replace with the correct USDT address for Sepolia
       address: "0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0",
       decimals: 6,
     },
@@ -30,13 +29,11 @@ export const Tokens = {
       decimals: 6,
     },
     USDT: {
-      // TODO: replace with the correct USDT address for Base
       address: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
       decimals: 6,
     },
   },
 };
-
 
 export const UniswapV4 = {
   mainnet: {

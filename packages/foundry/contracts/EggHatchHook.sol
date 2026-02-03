@@ -57,7 +57,7 @@ contract PetHatchHook is IHooks {
     ) external returns (bytes4, BalanceDelta) {
         if (msg.sender != poolManager) revert OnlyPoolManager(msg.sender);
 
-        (address owner, uint256 positionId) = abi.decode(hookData, (address, uint256));
+        (address owner, uint256 positionId,,) = abi.decode(hookData, (address, uint256, int24, int24));
         registry.hatchFromHook(owner, block.chainid, poolId, positionId);
 
         return (IHooks.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);

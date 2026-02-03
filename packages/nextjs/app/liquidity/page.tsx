@@ -1,12 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Address, AddressInput } from "@scaffold-ui/components";
+import { Address, AddressInput, EtherInput } from "@scaffold-ui/components";
 import { useWatchBalance } from "@scaffold-ui/hooks";
 import type { NextPage } from "next";
-import { isAddress } from "viem";
+import { isAddress, parseEther } from "viem";
 import { useAccount } from "wagmi";
-import { useDeployedContractInfo, useScaffoldReadContract, useTargetNetwork } from "~~/hooks/scaffold-eth";
+import {
+  useDeployedContractInfo,
+  useScaffoldReadContract,
+  useScaffoldWriteContract,
+  useTargetNetwork,
+} from "~~/hooks/scaffold-eth";
 
 const LiquidityPage: NextPage = () => {
   const { address: connectedAddress } = useAccount();
@@ -15,6 +20,7 @@ const LiquidityPage: NextPage = () => {
   const [usdcAddressInput, setUsdcAddressInput] = useState("");
   const [usdtAddressInput, setUsdtAddressInput] = useState("");
   const [petIdInput, setPetIdInput] = useState("1");
+  const [ethAmountInput, setEthAmountInput] = useState("");
 
   const usdcAddress = useMemo(
     () => (isAddress(usdcAddressInput) ? (usdcAddressInput as `0x${string}`) : undefined),
@@ -38,6 +44,7 @@ const LiquidityPage: NextPage = () => {
   });
 
   const { data: petRegistry } = useDeployedContractInfo({ contractName: "PetRegistry" });
+  const { data: autoLpHelper } = useDeployedContractInfo({ contractName: "AutoLpHelper" });
 
   const petId = Number(petIdInput);
   const isPetIdValid = Number.isInteger(petId) && petId > 0;
@@ -60,6 +67,20 @@ const LiquidityPage: NextPage = () => {
   const matchesConnected = Boolean(connectedAddress && petOwner?.toLowerCase() === connectedAddress.toLowerCase());
   const hasLpPosition = Boolean(petPositionId && petPositionId !== 0n);
   const isEggHatched = hasPet && hasLpPosition;
+
+  const { writeContractAsync, isPending } = useScaffoldWriteContract({
+    contractName: "AutoLpHelper",
+  });
+
+  const handleAutoLp = async () => {
+    if (!writeContractAsync) return;
+    const value = parseEther(ethAmountInput || "0");
+    await writeContractAsync({
+      functionName: "swapEthToUsdcUsdtAndMint",
+      args: [],
+      value,
+    });
+  };
 
   return (
     <div className="flex flex-col items-center gap-8 pt-10 px-6">
@@ -111,19 +132,26 @@ const LiquidityPage: NextPage = () => {
 
         <div className="card bg-base-100 shadow-xl">
           <div className="card-body">
-            <h2 className="card-title">Swap ETH → USDC / USDT</h2>
+            <h2 className="card-title">Auto LP (ETH → USDC/USDT)</h2>
             <p className="text-sm text-base-content/70">
-              Swap actions will be wired to the Uniswap v4 router once router + pool configuration is finalized.
+              Auto swap + mint LP using the helper contract and fixed tick range.
             </p>
             <div className="mt-4 grid grid-cols-1 gap-3">
-              <button className="btn btn-primary" disabled>
-                Swap ETH → USDC
-              </button>
-              <button className="btn btn-secondary" disabled>
-                Swap ETH → USDT
+              <EtherInput
+                defaultValue={ethAmountInput}
+                onValueChange={e => setEthAmountInput(e.toString())}
+                defaultUsdMode={false}
+                placeholder="ETH amount"
+              />
+              <button
+                className="btn btn-primary"
+                disabled={!connectedAddress || !autoLpHelper?.address || !ethAmountInput || isPending}
+                onClick={handleAutoLp}
+              >
+                {isPending ? "Submitting..." : "Auto LP + Hatch"}
               </button>
               <p className="text-xs text-base-content/60">
-                This will be enabled after router + pool parameters are configured.
+                Uses fixed tick offsets (-6 / +6) and a default slippage buffer.
               </p>
             </div>
           </div>
@@ -139,9 +167,7 @@ const LiquidityPage: NextPage = () => {
               <button className="btn btn-accent" disabled>
                 Create LP Position
               </button>
-              <p className="text-xs text-base-content/60">
-                This will be enabled after PositionManager + pool params are set.
-              </p>
+              <p className="text-xs text-base-content/60">LP creation is handled by the Auto LP action.</p>
             </div>
           </div>
         </div>
@@ -175,6 +201,7 @@ const LiquidityPage: NextPage = () => {
               <div className="text-sm">Position ID: {petPositionId?.toString() ?? "—"}</div>
               <div className="text-sm">Health: {petHealth?.toString() ?? "—"}</div>
               <div className="text-sm">Registry: {petRegistry?.address ?? "Not deployed"}</div>
+              <div className="text-sm">Auto LP Helper: {autoLpHelper?.address ?? "Not deployed"}</div>
             </div>
           </div>
         </div>
