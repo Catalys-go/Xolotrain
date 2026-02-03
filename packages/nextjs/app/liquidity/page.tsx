@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Address, AddressInput, EtherInput } from "@scaffold-ui/components";
+import { Address, EtherInput } from "@scaffold-ui/components";
 import { useWatchBalance } from "@scaffold-ui/hooks";
 import type { NextPage } from "next";
-import { isAddress, parseEther } from "viem";
+import { parseEther } from "viem";
 import { useAccount } from "wagmi";
 import {
   useDeployedContractInfo,
@@ -12,24 +12,41 @@ import {
   useScaffoldWriteContract,
   useTargetNetwork,
 } from "~~/hooks/scaffold-eth";
+import { Tokens } from "~~/utils/contractAddresses";
 
 const LiquidityPage: NextPage = () => {
   const { address: connectedAddress } = useAccount();
   const { targetNetwork } = useTargetNetwork();
 
-  const [usdcAddressInput, setUsdcAddressInput] = useState("");
-  const [usdtAddressInput, setUsdtAddressInput] = useState("");
   const [petIdInput, setPetIdInput] = useState("1");
   const [ethAmountInput, setEthAmountInput] = useState("");
 
-  const usdcAddress = useMemo(
-    () => (isAddress(usdcAddressInput) ? (usdcAddressInput as `0x${string}`) : undefined),
-    [usdcAddressInput],
-  );
-  const usdtAddress = useMemo(
-    () => (isAddress(usdtAddressInput) ? (usdtAddressInput as `0x${string}`) : undefined),
-    [usdtAddressInput],
-  );
+  // Automatically get token addresses based on network
+  const usdcAddress = useMemo(() => {
+    const networkName = targetNetwork.name?.toLowerCase();
+    if (networkName === "mainnet" || networkName === "ethereum" || networkName === "foundry") {
+      return Tokens.mainnet.USDC.address as `0x${string}`;
+    } else if (networkName === "sepolia") {
+      return Tokens.sepolia.USDC.address as `0x${string}`;
+    } else if (networkName === "base") {
+      return Tokens.base.USDC.address as `0x${string}`;
+    }
+    // Default to mainnet for local/fork
+    return Tokens.mainnet.USDC.address as `0x${string}`;
+  }, [targetNetwork]);
+
+  const usdtAddress = useMemo(() => {
+    const networkName = targetNetwork.name?.toLowerCase();
+    if (networkName === "mainnet" || networkName === "ethereum" || networkName === "foundry") {
+      return Tokens.mainnet.USDT.address as `0x${string}`;
+    } else if (networkName === "sepolia") {
+      return Tokens.sepolia.USDT.address as `0x${string}`;
+    } else if (networkName === "base") {
+      return Tokens.base.USDT.address as `0x${string}`;
+    }
+    // Default to mainnet for local/fork
+    return Tokens.mainnet.USDT.address as `0x${string}`;
+  }, [targetNetwork]);
 
   const { data: ethBalance } = useWatchBalance({ address: connectedAddress, chain: targetNetwork });
   const { data: usdcBalance } = useWatchBalance({
@@ -52,7 +69,7 @@ const LiquidityPage: NextPage = () => {
   const { data: petData } = useScaffoldReadContract({
     contractName: "PetRegistry",
     functionName: "pets",
-    args: isPetIdValid ? [BigInt(petId)] : undefined,
+    args: [isPetIdValid ? BigInt(petId) : undefined],
     query: { enabled: Boolean(petRegistry?.address && isPetIdValid) },
   });
 
@@ -77,7 +94,6 @@ const LiquidityPage: NextPage = () => {
     const value = parseEther(ethAmountInput || "0");
     await writeContractAsync({
       functionName: "swapEthToUsdcUsdtAndMint",
-      args: [],
       value,
     });
   };
@@ -120,12 +136,16 @@ const LiquidityPage: NextPage = () => {
               </div>
             </div>
             <div className="divider" />
-            <div className="grid grid-cols-1 gap-3">
-              <AddressInput placeholder="USDC token address" value={usdcAddressInput} onChange={setUsdcAddressInput} />
-              <AddressInput placeholder="USDT token address" value={usdtAddressInput} onChange={setUsdtAddressInput} />
-              <p className="text-xs text-base-content/60">
-                Provide token addresses for the current network to display balances.
-              </p>
+            <div>
+              <div className="text-sm font-semibold mb-2">Token Addresses (auto-detected)</div>
+              <div className="space-y-2 text-xs text-base-content/70">
+                <div>
+                  <span className="font-semibold">USDC:</span> {usdcAddress}
+                </div>
+                <div>
+                  <span className="font-semibold">USDT:</span> {usdtAddress}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -139,7 +159,7 @@ const LiquidityPage: NextPage = () => {
             <div className="mt-4 grid grid-cols-1 gap-3">
               <EtherInput
                 defaultValue={ethAmountInput}
-                onValueChange={e => setEthAmountInput(e.toString())}
+                onValueChange={({ valueInEth }) => setEthAmountInput(valueInEth)}
                 defaultUsdMode={false}
                 placeholder="ETH amount"
               />
