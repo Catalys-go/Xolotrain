@@ -144,7 +144,7 @@ SE-2 also provides other hooks to interact with blockchain data: `useScaffoldWat
 - `AddressInput`: Input field with address validation and ENS resolution
 - `Balance`: Show ETH balance in ether and USD
 - `EtherInput`: Number input with ETH/USD conversion toggle
-- `IntegerInput`: Integer-only input with wei conversion
+- `BaseInput`: A flexible, styled input component used as the foundation for custom inputs (e.g., EtherInput, AddressInput).
 
 ### Styling
 
