@@ -8,6 +8,7 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
 
 contract DeployAutoLpHelper is ScaffoldETHDeploy {
     function run() external ScaffoldEthDeployerRunner {
@@ -17,16 +18,17 @@ contract DeployAutoLpHelper is ScaffoldETHDeploy {
         PoolKey memory ethUsdc = _readPoolKey(json, string.concat(prefix, ".ETH_USDC"));
         PoolKey memory ethUsdt = _readPoolKey(json, string.concat(prefix, ".ETH_USDT"));
         PoolKey memory usdcUsdt = _readPoolKey(json, string.concat(prefix, ".USDC_USDT"));
-        address poolManager = vm.parseJsonAddress(json, string.concat(prefix, ".poolManager"));
-
-        address weth = Currency.unwrap(ethUsdt.currency0);
+        address positionManager = vm.parseJsonAddress(json, string.concat(prefix, ".positionManager"));
+        
+        // Get poolManager from PositionManager
+        IPoolManager poolManager = IPositionManager(positionManager).poolManager();
 
         AutoLpHelper helper = new AutoLpHelper(
-            IPoolManager(poolManager),
+            poolManager,
+            IPositionManager(positionManager),
             ethUsdc,
             ethUsdt,
             usdcUsdt,
-            weth,
             usdcUsdt.tickSpacing,
             -6,
             6
