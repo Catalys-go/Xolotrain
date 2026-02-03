@@ -231,6 +231,7 @@ Key philosophy: Prioritize **atomicity, simplicity, predictability, and observab
 Use these specialized agents for specific tasks:
 
 - **`grumpy-carlos-code-reviewer`**: Use this agent for code reviews before finalizing changes
+- **`xolotrain-project-guardian`**: Use this agent to evaluate scope and timeline alignment before implementing new features, when proposing architecture changes, or during daily progress checks. Ensures work aligns with design docs, bounty requirements, and the 6-day timeline
 
 ## Canonical Protocol Context
 
@@ -257,22 +258,25 @@ Xolotrain is a DeFi Tamagotchi game where axolotl pet health reflects Uniswap v4
 ### Core Documentation
 
 **Design Documents** (`docs/ai/design/`):
+
 - **[GAME_DESIGN.md](docs/ai/design/GAME_DESIGN.md)** - Game mechanics, health system, travel flow, evolution system
 - **[SYSTEM_ARCHITECTURE.md](docs/ai/design/SYSTEM_ARCHITECTURE.md)** - Component architecture, contract flows, agent services
 - **[INTERACTIONS.md](docs/ai/design/INTERACTIONS.md)** - Detailed user/agent/blockchain interaction catalog
 
 **Protocol Integration** (`docs/ai/protocols/`):
+
 - **[UNISWAP_CANONICAL_CONTEXT.md](docs/ai/protocols/UNISWAP_CANONICAL_CONTEXT.md)** - Uniswap v4 hooks and IPoolManager reference
 - **[LIFI_INTEGRATION_GUIDE.md](docs/ai/protocols/LIFI_INTEGRATION_GUIDE.md)** - Complete Li.FI SDK implementation with code examples
 - **[COPILOT_UNISWAP_PROMPT.md](docs/ai/protocols/COPILOT_UNISWAP_PROMPT.md)** - Uniswap v4 development context
 
 **Research & Planning** (`docs/ai/research/`):
+
 - **[IMPLEMENTATION_PLAN.md](docs/ai/research/IMPLEMENTATION_PLAN.md)** - Original project implementation roadmap
 - **[LIFI_COMPACT_FEASIBILITY.md](docs/ai/research/LIFI_COMPACT_FEASIBILITY.md)** - Technical feasibility analysis of intent-based architecture
 - **[BOUNTY_STRATEGY.md](docs/ai/research/BOUNTY_STRATEGY.md)** - Dual bounty qualification strategy (Li.FI + Uniswap)
 
-
 **Quick Reference** (`docs/ai/`):
+
 - **[6_DAY_TIMELINE.md](docs/ai/6_DAY_TIMELINE.md)** - Day-by-day hackathon implementation schedule
 - **[QUICK_REFERENCE.md](docs/ai/QUICK_REFERENCE.md)** - Elevator pitch, demo script, troubleshooting, talking points
 - **[AGENT_FIRST_APPROACH.md](docs/ai/AGENT_FIRST_APPROACH.md)** - Core principles for agent-friendly system design
