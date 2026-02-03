@@ -218,6 +218,14 @@ Make comments that add information. Avoid redundant JSDoc for simple functions.
 
 Use **Context7 MCP** tools to fetch up-to-date documentation for any library (Wagmi, Viem, RainbowKit, DaisyUI, Hardhat, Next.js, etc.). Context7 is configured as an MCP server and provides access to indexed documentation with code examples.
 
+### Agent-First Design Principles
+
+**Xolotrain is built for AI agents to operate autonomously.** Before implementing any feature, review:
+
+- **[docs/ai/AGENT_FIRST_DESIGN.md](docs/ai/AGENT_FIRST_DESIGN.md)** - Core principles for building agent-friendly systems
+
+Key philosophy: Prioritize **atomicity, simplicity, predictability, and observability** over human-friendly flexibility. Every decision point you add exponentially increases agent complexity. Default to single-transaction operations with zero intermediate state and comprehensive events.
+
 ## Specialized Agents
 
 Use these specialized agents for specific tasks:
