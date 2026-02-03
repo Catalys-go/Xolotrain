@@ -8,6 +8,10 @@ export const Tokens = {
       address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       decimals: 6,
     },
+    WETH: {
+      address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      decimals: 18,
+    },
   },
   sepolia: {
     USDC: {
