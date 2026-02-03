@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
@@ -50,13 +50,16 @@ contract VerifyPools is Script {
         console.log("  Calculated PoolId:");
         console.logBytes32(PoolId.unwrap(poolId));
 
-        try pm.getSlot0(poolId) returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee) {
+        // Use StateLibrary to get slot0
+        (uint160 sqrtPriceX96, int24 tick,, uint24 lpFee) = StateLibrary.getSlot0(pm, poolId);
+        
+        if (sqrtPriceX96 > 0) {
             console.log("  Pool exists!");
             console.log("  sqrtPriceX96:", sqrtPriceX96);
             console.log("  tick:", uint256(int256(tick)));
             console.log("  lpFee:", lpFee);
-        } catch {
-            console.log("  Pool does NOT exist or getSlot0 failed");
+        } else {
+            console.log("  Pool does NOT exist (sqrtPrice is 0)");
         }
         console.log("");
     }

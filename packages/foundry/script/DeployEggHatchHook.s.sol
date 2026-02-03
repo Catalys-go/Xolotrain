@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "forge-std/Script.sol";
-import "./DeployHelpers.s.sol";
+import {console} from "forge-std/console.sol";
+import {ScaffoldETHDeploy} from "./DeployHelpers.s.sol";
 import {EggHatchHook} from "../contracts/EggHatchHook.sol";
 
 contract DeployEggHatchHook is ScaffoldETHDeploy {

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "forge-std/Script.sol";
-import "./DeployHelpers.s.sol";
+
+import {ScaffoldETHDeploy} from "./DeployHelpers.s.sol";
 import {AutoLpHelper} from "../contracts/AutoLpHelper.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";

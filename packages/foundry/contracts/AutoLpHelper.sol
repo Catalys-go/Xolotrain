@@ -39,16 +39,16 @@ contract AutoLpHelper is IUnlockCallback {
         uint256 timestamp
     );
 
-    IPoolManager public immutable poolManager;
-    IPositionManager public immutable posm;
+    IPoolManager public immutable POOL_MANAGER;
+    IPositionManager public immutable POSM;
     
     PoolKey public ethUsdcPoolKey;
     PoolKey public ethUsdtPoolKey;
     PoolKey public usdcUsdtPoolKey;
 
-    int24 public immutable tickSpacing;
-    int24 public immutable tickLowerOffset;
-    int24 public immutable tickUpperOffset;
+    int24 public immutable TICK_SPACING;
+    int24 public immutable TICK_LOWER_OFFSET;
+    int24 public immutable TICK_UPPER_OFFSET;
 
     uint256 public constant DEFAULT_SLIPPAGE_BPS = 200;
 
@@ -72,14 +72,14 @@ contract AutoLpHelper is IUnlockCallback {
         int24 _tickLowerOffset,
         int24 _tickUpperOffset
     ) {
-        poolManager = _poolManager;
-        posm = _posm;
+        POOL_MANAGER = _poolManager;
+        POSM = _posm;
         ethUsdcPoolKey = _ethUsdcPoolKey;
         ethUsdtPoolKey = _ethUsdtPoolKey;
         usdcUsdtPoolKey = _usdcUsdtPoolKey;
-        tickSpacing = _tickSpacing;
-        tickLowerOffset = _tickLowerOffset;
-        tickUpperOffset = _tickUpperOffset;
+        TICK_SPACING = _tickSpacing;
+        TICK_LOWER_OFFSET = _tickLowerOffset;
+        TICK_UPPER_OFFSET = _tickUpperOffset;
     }
 
     receive() external payable {}
@@ -98,17 +98,17 @@ contract AutoLpHelper is IUnlockCallback {
         uint128 remainder = uint128(msg.value) - half;
 
         // Get current prices for slippage calculation
-        (uint160 sqrtPriceEthUsdc,,,) = StateLibrary.getSlot0(poolManager, ethUsdcPoolKey.toId());
-        (uint160 sqrtPriceEthUsdt,,,) = StateLibrary.getSlot0(poolManager, ethUsdtPoolKey.toId());
-        (uint160 sqrtPriceUsdcUsdt, int24 tickCurrent,,) = StateLibrary.getSlot0(poolManager, usdcUsdtPoolKey.toId());
+        (uint160 sqrtPriceEthUsdc,,,) = StateLibrary.getSlot0(POOL_MANAGER, ethUsdcPoolKey.toId());
+        (uint160 sqrtPriceEthUsdt,,,) = StateLibrary.getSlot0(POOL_MANAGER, ethUsdtPoolKey.toId());
+        (, int24 tickCurrent,,) = StateLibrary.getSlot0(POOL_MANAGER, usdcUsdtPoolKey.toId());
 
         // Calculate expected outputs with slippage
         uint128 minUsdcOut = _applySlippage(_spotQuote(half, sqrtPriceEthUsdc, true));
         uint128 minUsdtOut = _applySlippage(_spotQuote(remainder, sqrtPriceEthUsdt, true));
 
         // Calculate tick range for LP position
-        int24 tickLower = _alignTick(tickCurrent + tickLowerOffset);
-        int24 tickUpper = _alignTick(tickCurrent + tickUpperOffset);
+        int24 tickLower = _alignTick(tickCurrent + TICK_LOWER_OFFSET);
+        int24 tickUpper = _alignTick(tickCurrent + TICK_UPPER_OFFSET);
 
         SwapAndMintParams memory params = SwapAndMintParams({
             ethForUsdc: half,
@@ -121,7 +121,7 @@ contract AutoLpHelper is IUnlockCallback {
         });
 
         // Execute atomically via unlock callback
-        bytes memory result = poolManager.unlock(abi.encode(params));
+        bytes memory result = POOL_MANAGER.unlock(abi.encode(params));
         liquidity = abi.decode(result, (uint128));
 
         emit PositionCreated(
@@ -139,12 +139,12 @@ contract AutoLpHelper is IUnlockCallback {
     /// @notice Callback function called by PoolManager.unlock()
     /// @dev All swaps and LP minting happen atomically here
     function unlockCallback(bytes calldata data) external returns (bytes memory) {
-        if (msg.sender != address(poolManager)) revert UnauthorizedCaller();
+        if (msg.sender != address(POOL_MANAGER)) revert UnauthorizedCaller();
 
         SwapAndMintParams memory params = abi.decode(data, (SwapAndMintParams));
 
         // Step 1: Swap ETH → USDC
-        BalanceDelta delta1 = poolManager.swap(
+        BalanceDelta delta1 = POOL_MANAGER.swap(
             ethUsdcPoolKey,
             SwapParams({
                 zeroForOne: true,
@@ -155,7 +155,7 @@ contract AutoLpHelper is IUnlockCallback {
         );
 
         // Step 2: Swap ETH → USDT
-        BalanceDelta delta2 = poolManager.swap(
+        BalanceDelta delta2 = POOL_MANAGER.swap(
             ethUsdtPoolKey,
             SwapParams({
                 zeroForOne: true,
@@ -177,7 +177,7 @@ contract AutoLpHelper is IUnlockCallback {
         }
 
         // Step 3: Calculate liquidity for LP position
-        (uint160 sqrtPrice,,,) = StateLibrary.getSlot0(poolManager, usdcUsdtPoolKey.toId());
+        (uint160 sqrtPrice,,,) = StateLibrary.getSlot0(POOL_MANAGER, usdcUsdtPoolKey.toId());
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
             sqrtPrice,
             TickMath.getSqrtPriceAtTick(params.tickLower),
@@ -187,7 +187,7 @@ contract AutoLpHelper is IUnlockCallback {
         );
 
         // Step 4: Mint LP position directly via poolManager
-        (BalanceDelta delta3,) = poolManager.modifyLiquidity(
+        (BalanceDelta delta3,) = POOL_MANAGER.modifyLiquidity(
             usdcUsdtPoolKey,
             ModifyLiquidityParams({
                 tickLower: params.tickLower,
@@ -217,22 +217,28 @@ contract AutoLpHelper is IUnlockCallback {
         if (netUsdcDelta < 0) {
             // We owe USDC - need to transfer to poolManager
             // But we don't have it yet! Take from the swap first, then settle
-            poolManager.take(usdcUsdtPoolKey.currency0, address(this), uint128(int128(delta1.amount1())));
-            IERC20(Currency.unwrap(usdcUsdtPoolKey.currency0)).transfer(address(poolManager), uint256(-netUsdcDelta));
-            poolManager.settle();
+            POOL_MANAGER.take(usdcUsdtPoolKey.currency0, address(this), uint128(int128(delta1.amount1())));
+            require(
+                IERC20(Currency.unwrap(usdcUsdtPoolKey.currency0)).transfer(address(POOL_MANAGER), uint256(-netUsdcDelta)),
+                "USDC transfer failed"
+            );
+            POOL_MANAGER.settle();
         } else if (netUsdcDelta > 0) {
             // We're owed USDC - send to recipient
-            poolManager.take(usdcUsdtPoolKey.currency0, params.recipient, uint256(netUsdcDelta));
+            POOL_MANAGER.take(usdcUsdtPoolKey.currency0, params.recipient, uint256(netUsdcDelta));
         }
         
         if (netUsdtDelta < 0) {
             // We owe USDT
-            poolManager.take(usdcUsdtPoolKey.currency1, address(this), uint128(int128(delta2.amount1())));
-            IERC20(Currency.unwrap(usdcUsdtPoolKey.currency1)).transfer(address(poolManager), uint256(-netUsdtDelta));
-            poolManager.settle();
+            POOL_MANAGER.take(usdcUsdtPoolKey.currency1, address(this), uint128(int128(delta2.amount1())));
+            require(
+                IERC20(Currency.unwrap(usdcUsdtPoolKey.currency1)).transfer(address(POOL_MANAGER), uint256(-netUsdtDelta)),
+                "USDT transfer failed"
+            );
+            POOL_MANAGER.settle();
         } else if (netUsdtDelta > 0) {
             // We're owed USDT
-            poolManager.take(usdcUsdtPoolKey.currency1, params.recipient, uint256(netUsdtDelta));
+            POOL_MANAGER.take(usdcUsdtPoolKey.currency1, params.recipient, uint256(netUsdtDelta));
         }
 
         return abi.encode(liquidity);
@@ -241,11 +247,11 @@ contract AutoLpHelper is IUnlockCallback {
     /// @notice Settle currency delta with PoolManager
     function _settle(Currency currency, uint256 amount) internal {
         if (currency.isAddressZero()) {
-            poolManager.settle{value: amount}();
+            POOL_MANAGER.settle{value: amount}();
         } else {
-            poolManager.sync(currency);
+            POOL_MANAGER.sync(currency);
             // Note: For ERC20 tokens, would need to transfer first
-            poolManager.settle();
+            POOL_MANAGER.settle();
         }
     }
 
@@ -270,7 +276,7 @@ contract AutoLpHelper is IUnlockCallback {
 
     /// @notice Align tick to tick spacing
     function _alignTick(int24 tick) internal view returns (int24 aligned) {
-        int24 spacing = tickSpacing;
+        int24 spacing = TICK_SPACING;
         int24 compressed = tick / spacing;
         aligned = compressed * spacing;
     }

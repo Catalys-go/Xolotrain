@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {BalanceDelta, BalanceDeltaLibrary} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
@@ -18,16 +17,16 @@ interface IPetRegistry {
 }
 
 contract EggHatchHook is IHooks {
-    address public immutable poolManager;
-    IPetRegistry public immutable registry;
-    bytes32 public immutable poolId;
+    address public immutable POOL_MANAGER;
+    IPetRegistry public immutable REGISTRY;
+    bytes32 public immutable POOL_ID;
 
     error OnlyPoolManager(address caller);
 
     constructor(address _poolManager, address _registry, bytes32 _poolId) {
-        poolManager = _poolManager;
-        registry = IPetRegistry(_registry);
-        poolId = _poolId;
+        POOL_MANAGER = _poolManager;
+        REGISTRY = IPetRegistry(_registry);
+        POOL_ID = _poolId;
     }
 
     function beforeInitialize(address, PoolKey calldata, uint160) external pure returns (bytes4) {
@@ -55,10 +54,10 @@ contract EggHatchHook is IHooks {
         BalanceDelta,
         bytes calldata hookData
     ) external returns (bytes4, BalanceDelta) {
-        if (msg.sender != poolManager) revert OnlyPoolManager(msg.sender);
+        if (msg.sender != POOL_MANAGER) revert OnlyPoolManager(msg.sender);
 
         (address owner, uint256 positionId,,) = abi.decode(hookData, (address, uint256, int24, int24));
-        registry.hatchFromHook(owner, block.chainid, poolId, positionId);
+        REGISTRY.hatchFromHook(owner, block.chainid, POOL_ID, positionId);
 
         return (IHooks.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }
