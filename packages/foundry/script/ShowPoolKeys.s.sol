@@ -22,6 +22,7 @@ contract ShowPoolKeys is Script {
     address constant USDT_SEPOLIA = 0xaA8E23Fb1079EA71e0a56F48a2aA51851D8433D0;
 
     // Fee tiers (in hundredths of a bip, so 3000 = 0.30%)
+    uint24 constant FEE_ULTRA_LOW = 10; // 0.001%
     uint24 constant FEE_LOW = 100;      // 0.01%
     uint24 constant FEE_MEDIUM = 500;   // 0.05%
     uint24 constant FEE_HIGH = 3000;    // 0.30%
@@ -34,12 +35,14 @@ contract ShowPoolKeys is Script {
     int24 constant TICK_SPACING_VERY_HIGH = 200;
 
     function run() external view {
+        // Signature to run without hook address
+        run(address(0));
+    }
+
+    function run(address hookAddress) public view {
         console.log("\n========================================");
         console.log("   UNISWAP V4 POOL KEY CALCULATOR");
         console.log("========================================\n");
-        
-        // Change this to your hook address or keep as address(0) for no hooks
-        address hookAddress = address(0);
         
         console.log("Network: MAINNET");
         console.log("Hook Address:", hookAddress);
@@ -52,7 +55,7 @@ contract ShowPoolKeys is Script {
             USDC_MAINNET,
             FEE_MEDIUM,  // 0.05%
             TICK_SPACING_MEDIUM, // 10
-            hookAddress
+            hookAddress 
         );
         
         // ETH/USDT Pool
@@ -70,7 +73,7 @@ contract ShowPoolKeys is Script {
             "USDC/USDT",
             USDC_MAINNET,
             USDT_MAINNET,
-            FEE_LOW,  // 0.01% - stablecoins typically have lower fees
+            FEE_ULTRA_LOW,  // 0.001%
             TICK_SPACING_LOW, // 1
             hookAddress
         );
@@ -113,6 +116,7 @@ contract ShowPoolKeys is Script {
     }
 
     function getFeePercentString(uint24 fee) internal pure returns (string memory) {
+        if (fee == 10) return "0.001%";
         if (fee == 100) return "0.01%";
         if (fee == 500) return "0.05%";
         if (fee == 3000) return "0.30%";

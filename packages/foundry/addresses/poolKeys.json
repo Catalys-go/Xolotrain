@@ -1,0 +1,58 @@
+{
+  "1": {
+    "chainName": "mainnet",
+    "poolManager": "0x000000000004444c5dc75cB358380D2e3dE08A90",
+    "ETH_USDC": {
+      "token0": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "token1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "fee": 500,
+      "tickSpacing": 10,
+      "hooks": "0x0000000000000000000000000000000000000000",
+      "poolId": "0x4f88f7c99022eace4740c6898f59ce6a2e798a1e64ce54589720b7153eb224a7"
+    },
+    "ETH_USDT": {
+      "token0": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "token1": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      "fee": 500,
+      "tickSpacing": 10,
+      "hooks": "0x0000000000000000000000000000000000000000",
+      "poolId": "0x1dc6f99e8bf15e8b62c8e7eb03b67291e6bc5accf2970a55a7068a7fc0b33a46"
+    },
+    "USDC_USDT": {
+      "token0": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "token1": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      "fee": 100,
+      "tickSpacing": 1,
+      "hooks": "0x0000000000000000000000000000000000000000",
+      "poolId": "0xe018f09af38956affdfeab72c2cefbcd4e6fee44d09df7525ec9dba3e51356a5"
+    }
+  },
+  "8453": {
+    "chainName": "base",
+    "poolManager": "0x498581ff718922c3f8e6a244956af099b2652b2b",
+    "ETH_USDC": {
+      "token0": "",
+      "token1": "",
+      "fee": 0,
+      "tickSpacing": 0,
+      "hooks": "0x0000000000000000000000000000000000000000",
+      "poolId": ""
+    },
+    "ETH_USDT": {
+      "token0": "",
+      "token1": "",
+      "fee": 0,
+      "tickSpacing": 0,
+      "hooks": "0x0000000000000000000000000000000000000000",
+      "poolId": ""
+    },
+    "USDC_USDT": {
+      "token0": "",
+      "token1": "",
+      "fee": 0,
+      "tickSpacing": 0,
+      "hooks": "0x0000000000000000000000000000000000000000",
+      "poolId": ""
+    }
+  }
+}
