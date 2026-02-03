@@ -237,7 +237,7 @@ Use these specialized agents for specific tasks:
 All agents operating in this repository MUST use the following file as the authoritative
 reference for Uniswap-related reasoning:
 
-- `docs/ai/UNISWAP_CANONICAL_CONTEXT.md`
+- **[docs/ai/protocols/UNISWAP_CANONICAL_CONTEXT.md](docs/ai/protocols/UNISWAP_CANONICAL_CONTEXT.md)** - Authoritative Uniswap v4 context
 
 Agents must not:
 
@@ -250,13 +250,44 @@ If a task requires assumptions beyond this context, the agent must:
 - Explicitly state the assumption, or
 - Ask for clarification before proceeding
 
-### Xolotrain Architecture
+## Xolotrain Project Documentation
 
-[What Xolotrain does + which Uniswap version/features it uses]
+Xolotrain is a DeFi Tamagotchi game where axolotl pet health reflects Uniswap v4 LP position performance. The project uses Uniswap v4 hooks, The Compact for intent-based settlement, and Li.FI for cross-chain LP migration.
+
+### Core Documentation
+
+**Design Documents** (`docs/ai/design/`):
+- **[GAME_DESIGN.md](docs/ai/design/GAME_DESIGN.md)** - Game mechanics, health system, travel flow, evolution system
+- **[SYSTEM_ARCHITECTURE.md](docs/ai/design/SYSTEM_ARCHITECTURE.md)** - Component architecture, contract flows, agent services
+- **[INTERACTIONS.md](docs/ai/design/INTERACTIONS.md)** - Detailed user/agent/blockchain interaction catalog
+
+**Protocol Integration** (`docs/ai/protocols/`):
+- **[UNISWAP_CANONICAL_CONTEXT.md](docs/ai/protocols/UNISWAP_CANONICAL_CONTEXT.md)** - Uniswap v4 hooks and IPoolManager reference
+- **[LIFI_INTEGRATION_GUIDE.md](docs/ai/protocols/LIFI_INTEGRATION_GUIDE.md)** - Complete Li.FI SDK implementation with code examples
+- **[COPILOT_UNISWAP_PROMPT.md](docs/ai/protocols/COPILOT_UNISWAP_PROMPT.md)** - Uniswap v4 development context
+
+**Research & Planning** (`docs/ai/research/`):
+- **[IMPLEMENTATION_PLAN.md](docs/ai/research/IMPLEMENTATION_PLAN.md)** - Original project implementation roadmap
+- **[LIFI_COMPACT_FEASIBILITY.md](docs/ai/research/LIFI_COMPACT_FEASIBILITY.md)** - Technical feasibility analysis of intent-based architecture
+- **[BOUNTY_STRATEGY.md](docs/ai/research/BOUNTY_STRATEGY.md)** - Dual bounty qualification strategy (Li.FI + Uniswap)
+
+
+**Quick Reference** (`docs/ai/`):
+- **[6_DAY_TIMELINE.md](docs/ai/6_DAY_TIMELINE.md)** - Day-by-day hackathon implementation schedule
+- **[QUICK_REFERENCE.md](docs/ai/QUICK_REFERENCE.md)** - Elevator pitch, demo script, troubleshooting, talking points
+- **[AGENT_FIRST_APPROACH.md](docs/ai/AGENT_FIRST_APPROACH.md)** - Core principles for agent-friendly system design
+
+### Key Architecture Decisions
+
+- **Uniswap v4**: AutoLpHelper for atomic LP creation, EggHatchHook for pet minting on LP creation
+- **The Compact**: Intent-based settlement for cross-chain LP migration (single signature UX)
+- **Li.FI Composer**: Solver uses Li.FI SDK for optimal cross-chain routing
+- **Agent System**: Deterministic health monitoring + solver bot for travel intent fulfillment
+- **Target Chains**: Sepolia (11155111) ↔ Base Sepolia (84532)
 
 ### Integration Checklist
 
-- [ ] Version selected (v2/v3/v4)
-- [ ] Hook requirements identified
-- [ ] SDK vs. contract integration decided
-- [ ] Security audit plan
+- [x] Version selected: Uniswap v4
+- [x] Hook requirements: EggHatchHook (afterAddLiquidity)
+- [x] SDK integration: Li.FI Composer for cross-chain bridging
+- [ ] Security audit: Planned post-hackathon
