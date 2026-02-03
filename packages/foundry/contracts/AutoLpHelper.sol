@@ -131,14 +131,9 @@ contract AutoLpHelper is V4Router {
         actions[5] = bytes1(uint8(Actions.TAKE));
         params[5] = abi.encode(ethUsdtPoolKey.currency0 == wethCurrency ? ethUsdtPoolKey.currency1 : ethUsdtPoolKey.currency0, ActionConstants.ADDRESS_THIS, ActionConstants.OPEN_DELTA);
 
-        _executeActions(abi.encode(actions, params));
+        poolManager.unlock(abi.encode(actions, params));
 
-        bytes memory mintActions = new bytes(1);
-        bytes[] memory mintParams = new bytes[](1);
-        mintActions[0] = bytes1(uint8(ACTION_MINT_LP));
-        mintParams[0] = abi.encode(usdcUsdtPoolKey);
-
-        _executeActions(abi.encode(mintActions, mintParams));
+        _mintWithBalances(usdcUsdtPoolKey);
 
         tickLower = lastTickLower;
         tickUpper = lastTickUpper;
@@ -160,16 +155,6 @@ contract AutoLpHelper is V4Router {
     function _applySlippage(uint128 amountOut) internal pure returns (uint128) {
         uint256 adjusted = (uint256(amountOut) * (10_000 - DEFAULT_SLIPPAGE_BPS)) / 10_000;
         return uint128(adjusted);
-    }
-
-    function _handleAction(uint256 action, bytes calldata params) internal override {
-        if (action == ACTION_MINT_LP) {
-            PoolKey memory poolKey = abi.decode(params, (PoolKey));
-            _mintWithBalances(poolKey);
-            return;
-        }
-
-        super._handleAction(action, params);
     }
 
     function _mintWithBalances(PoolKey memory poolKey) internal {
@@ -195,7 +180,7 @@ contract AutoLpHelper is V4Router {
 
         (BalanceDelta delta,) = poolManager.modifyLiquidity(
             poolKey,
-            IPoolManager.ModifyLiquidityParams({
+            ModifyLiquidityParams({
                 tickLower: tickLower,
                 tickUpper: tickUpper,
                 liquidityDelta: int256(uint256(liquidity)),
