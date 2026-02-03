@@ -17,7 +17,7 @@ interface IPetRegistry {
     ) external returns (uint256);
 }
 
-contract PetHatchHook is IHooks {
+contract EggHatchHook is IHooks {
     address public immutable poolManager;
     IPetRegistry public immutable registry;
     bytes32 public immutable poolId;

@@ -37,9 +37,9 @@ contract PetRegistry is Ownable {
     event HookUpdated(address indexed hook);
     event AgentUpdated(address indexed agent);
 
-    constructor(address _hook, address _agent) Ownable(msg.sender) {
-        _setHook(_hook);
-        _setAgent(_agent);
+    constructor(/* address _hook, address _agent */) Ownable(msg.sender) {
+        //_setHook(_hook);        
+        //_setAgent(_agent);
     }
 
     function hatchFromHook(
