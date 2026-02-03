@@ -19,6 +19,7 @@ contract PetRegistry is Ownable {
     error PetNotFound(uint256 petId);
     error InvalidHook(address hook);
     error InvalidAgent(address agent);
+    error NotAgent(address caller);
 
     address public hook;
     address public agent; // off-chain agent updater
