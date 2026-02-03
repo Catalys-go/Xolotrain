@@ -2,144 +2,254 @@
 pragma solidity ^0.8.20;
 
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
-import {BalanceDelta, BalanceDeltaLibrary} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
-import {ModifyLiquidityParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {FixedPoint96} from "@uniswap/v4-core/src/libraries/FixedPoint96.sol";
 import {FullMath} from "@uniswap/v4-core/src/libraries/FullMath.sol";
-import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {SwapParams, ModifyLiquidityParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 
-import {IV4Router} from "@uniswap/v4-periphery/src/interfaces/IV4Router.sol";
-import {V4Router} from "@uniswap/v4-periphery/src/V4Router.sol";
-import {Actions} from "@uniswap/v4-periphery/src/libraries/Actions.sol";
-import {ActionConstants} from "@uniswap/v4-periphery/src/libraries/ActionConstants.sol";
+import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
 import {LiquidityAmounts} from "@uniswap/v4-periphery/src/libraries/LiquidityAmounts.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract AutoLpHelper is V4Router {
+/// @title AutoLpHelper
+/// @notice Atomically swaps ETH to USDC/USDT and creates LP position in one transaction
+/// @dev Uses IUnlockCallback pattern for atomic execution
+contract AutoLpHelper is IUnlockCallback {
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
-    using BalanceDeltaLibrary for BalanceDelta;
 
     error ZeroInput();
-    error UnsupportedPayer(address payer);
-    error ActionNotSupported(uint256 action);
-    error InProgress();
-    error NotInProgress();
+    error UnauthorizedCaller();
+    error InsufficientOutput(uint256 expected, uint256 actual);
 
+    event PositionCreated(
+        address indexed owner,
+        uint256 ethInput,
+        uint256 usdcAmount,
+        uint256 usdtAmount,
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity,
+        uint256 timestamp
+    );
+
+    IPoolManager public immutable poolManager;
+    IPositionManager public immutable posm;
+    
     PoolKey public ethUsdcPoolKey;
     PoolKey public ethUsdtPoolKey;
     PoolKey public usdcUsdtPoolKey;
-
-    address public immutable weth;
 
     int24 public immutable tickSpacing;
     int24 public immutable tickLowerOffset;
     int24 public immutable tickUpperOffset;
 
-    address private currentOwner;
-
-    int24 private lastTickLower;
-    int24 private lastTickUpper;
-    uint256 private lastPositionId;
-
-    uint256 private constant ACTION_MINT_LP = 0x80;
     uint256 public constant DEFAULT_SLIPPAGE_BPS = 200;
+
+    struct SwapAndMintParams {
+        uint128 ethForUsdc;
+        uint128 ethForUsdt;
+        uint128 minUsdcOut;
+        uint128 minUsdtOut;
+        int24 tickLower;
+        int24 tickUpper;
+        address recipient;
+    }
 
     constructor(
         IPoolManager _poolManager,
+        IPositionManager _posm,
         PoolKey memory _ethUsdcPoolKey,
         PoolKey memory _ethUsdtPoolKey,
         PoolKey memory _usdcUsdtPoolKey,
-        address _weth,
         int24 _tickSpacing,
         int24 _tickLowerOffset,
         int24 _tickUpperOffset
-    ) V4Router(_poolManager) {
+    ) {
+        poolManager = _poolManager;
+        posm = _posm;
         ethUsdcPoolKey = _ethUsdcPoolKey;
         ethUsdtPoolKey = _ethUsdtPoolKey;
         usdcUsdtPoolKey = _usdcUsdtPoolKey;
-        weth = _weth;
         tickSpacing = _tickSpacing;
         tickLowerOffset = _tickLowerOffset;
         tickUpperOffset = _tickUpperOffset;
     }
 
-    function msgSender() public view override returns (address) {
-        return address(this);
-    }
-
     receive() external payable {}
 
+    /// @notice Swaps ETH to USDC/USDT and creates an LP position in one atomic transaction
+    /// @return liquidity The liquidity amount of the created position
     function swapEthToUsdcUsdtAndMint()
         external
         payable
-        returns (int24 tickLower, int24 tickUpper, uint256 positionId)
+        returns (uint128 liquidity)
     {
         if (msg.value == 0) revert ZeroInput();
-        if (currentOwner != address(0)) revert InProgress();
-        currentOwner = msg.sender;
 
-        _wrapEth(msg.value);
-
+        // Calculate swap amounts
         uint128 half = uint128(msg.value / 2);
         uint128 remainder = uint128(msg.value) - half;
 
+        // Get current prices for slippage calculation
         (uint160 sqrtPriceEthUsdc,,,) = StateLibrary.getSlot0(poolManager, ethUsdcPoolKey.toId());
         (uint160 sqrtPriceEthUsdt,,,) = StateLibrary.getSlot0(poolManager, ethUsdtPoolKey.toId());
+        (uint160 sqrtPriceUsdcUsdt, int24 tickCurrent,,) = StateLibrary.getSlot0(poolManager, usdcUsdtPoolKey.toId());
 
-        uint128 minUsdcOut = _applySlippage(_spotQuote(half, sqrtPriceEthUsdc, ethUsdcPoolKey.currency0 == Currency.wrap(weth)));
-        uint128 minUsdtOut = _applySlippage(_spotQuote(remainder, sqrtPriceEthUsdt, ethUsdtPoolKey.currency0 == Currency.wrap(weth)));
+        // Calculate expected outputs with slippage
+        uint128 minUsdcOut = _applySlippage(_spotQuote(half, sqrtPriceEthUsdc, true));
+        uint128 minUsdtOut = _applySlippage(_spotQuote(remainder, sqrtPriceEthUsdt, true));
 
-        (tickLower, tickUpper, positionId) = _executeSwapAndMint(half, remainder, minUsdcOut, minUsdtOut);
+        // Calculate tick range for LP position
+        int24 tickLower = _alignTick(tickCurrent + tickLowerOffset);
+        int24 tickUpper = _alignTick(tickCurrent + tickUpperOffset);
 
-        currentOwner = address(0);
+        SwapAndMintParams memory params = SwapAndMintParams({
+            ethForUsdc: half,
+            ethForUsdt: remainder,
+            minUsdcOut: minUsdcOut,
+            minUsdtOut: minUsdtOut,
+            tickLower: tickLower,
+            tickUpper: tickUpper,
+            recipient: msg.sender
+        });
+
+        // Execute atomically via unlock callback
+        bytes memory result = poolManager.unlock(abi.encode(params));
+        liquidity = abi.decode(result, (uint128));
+
+        emit PositionCreated(
+            msg.sender,
+            msg.value,
+            minUsdcOut,
+            minUsdtOut,
+            tickLower,
+            tickUpper,
+            liquidity,
+            block.timestamp
+        );
     }
 
-    function _executeSwapAndMint(
-        uint128 amountWethForUsdc,
-        uint128 amountWethForUsdt,
-        uint128 minUsdcOut,
-        uint128 minUsdtOut
-    ) internal returns (int24 tickLower, int24 tickUpper, uint256 positionId) {
-        bytes memory actions = new bytes(6);
-        bytes[] memory params = new bytes[](6);
+    /// @notice Callback function called by PoolManager.unlock()
+    /// @dev All swaps and LP minting happen atomically here
+    function unlockCallback(bytes calldata data) external returns (bytes memory) {
+        if (msg.sender != address(poolManager)) revert UnauthorizedCaller();
 
-        Currency wethCurrency = Currency.wrap(weth);
+        SwapAndMintParams memory params = abi.decode(data, (SwapAndMintParams));
 
-        actions[0] = bytes1(uint8(Actions.SWAP_EXACT_IN_SINGLE));
-        params[0] = abi.encode(
-            IV4Router.ExactInputSingleParams(ethUsdcPoolKey, ethUsdcPoolKey.currency0 == wethCurrency, amountWethForUsdc, minUsdcOut, bytes(""))
+        // Step 1: Swap ETH → USDC
+        BalanceDelta delta1 = poolManager.swap(
+            ethUsdcPoolKey,
+            SwapParams({
+                zeroForOne: true,
+                amountSpecified: -int256(uint256(params.ethForUsdc)),
+                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+            }),
+            bytes("")
         );
 
-        actions[1] = bytes1(uint8(Actions.SETTLE));
-        params[1] = abi.encode(wethCurrency, ActionConstants.OPEN_DELTA, false);
-
-        actions[2] = bytes1(uint8(Actions.TAKE));
-        params[2] = abi.encode(ethUsdcPoolKey.currency0 == wethCurrency ? ethUsdcPoolKey.currency1 : ethUsdcPoolKey.currency0, ActionConstants.ADDRESS_THIS, ActionConstants.OPEN_DELTA);
-
-        actions[3] = bytes1(uint8(Actions.SWAP_EXACT_IN_SINGLE));
-        params[3] = abi.encode(
-            IV4Router.ExactInputSingleParams(ethUsdtPoolKey, ethUsdtPoolKey.currency0 == wethCurrency, amountWethForUsdt, minUsdtOut, bytes(""))
+        // Step 2: Swap ETH → USDT
+        BalanceDelta delta2 = poolManager.swap(
+            ethUsdtPoolKey,
+            SwapParams({
+                zeroForOne: true,
+                amountSpecified: -int256(uint256(params.ethForUsdt)),
+                sqrtPriceLimitX96: TickMath.MIN_SQRT_PRICE + 1
+            }),
+            bytes("")
         );
 
-        actions[4] = bytes1(uint8(Actions.SETTLE));
-        params[4] = abi.encode(wethCurrency, ActionConstants.OPEN_DELTA, false);
+        // Check slippage
+        uint256 usdcReceived = uint256(uint128(delta1.amount1()));
+        uint256 usdtReceived = uint256(uint128(delta2.amount1()));
+        
+        if (usdcReceived < params.minUsdcOut) {
+            revert InsufficientOutput(params.minUsdcOut, usdcReceived);
+        }
+        if (usdtReceived < params.minUsdtOut) {
+            revert InsufficientOutput(params.minUsdtOut, usdtReceived);
+        }
 
-        actions[5] = bytes1(uint8(Actions.TAKE));
-        params[5] = abi.encode(ethUsdtPoolKey.currency0 == wethCurrency ? ethUsdtPoolKey.currency1 : ethUsdtPoolKey.currency0, ActionConstants.ADDRESS_THIS, ActionConstants.OPEN_DELTA);
+        // Step 3: Calculate liquidity for LP position
+        (uint160 sqrtPrice,,,) = StateLibrary.getSlot0(poolManager, usdcUsdtPoolKey.toId());
+        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
+            sqrtPrice,
+            TickMath.getSqrtPriceAtTick(params.tickLower),
+            TickMath.getSqrtPriceAtTick(params.tickUpper),
+            usdcReceived,
+            usdtReceived
+        );
 
-        poolManager.unlock(abi.encode(actions, params));
+        // Step 4: Mint LP position directly via poolManager
+        (BalanceDelta delta3,) = poolManager.modifyLiquidity(
+            usdcUsdtPoolKey,
+            ModifyLiquidityParams({
+                tickLower: params.tickLower,
+                tickUpper: params.tickUpper,
+                liquidityDelta: int256(uint256(liquidity)),
+                salt: bytes32(0)
+            }),
+            bytes("")
+        );
 
-        _mintWithBalances(usdcUsdtPoolKey);
+        // Step 5: Settle all deltas
+        // Settle ETH from swaps - we owe ETH to the pool
+        _settle(ethUsdcPoolKey.currency0, uint256(uint128(-delta1.amount0())));
+        _settle(ethUsdtPoolKey.currency0, uint256(uint128(-delta2.amount0())));
+        
+        // For USDC/USDT: the swaps gave us positive deltas (we're owed tokens)
+        // and modifyLiquidity gave us negative deltas (we owe tokens)
+        // In an ideal world, these would cancel out exactly
+        // But there might be small differences, so we need to handle both cases
+        
+        // Net USDC delta = what we got from swap1 + what we owe from LP mint
+        int256 netUsdcDelta = int256(int128(delta1.amount1())) + int256(int128(delta3.amount0()));
+        // Net USDT delta = what we got from swap2 + what we owe from LP mint  
+        int256 netUsdtDelta = int256(int128(delta2.amount1())) + int256(int128(delta3.amount1()));
+        
+        // Settle or take based on net position
+        if (netUsdcDelta < 0) {
+            // We owe USDC - need to transfer to poolManager
+            // But we don't have it yet! Take from the swap first, then settle
+            poolManager.take(usdcUsdtPoolKey.currency0, address(this), uint128(int128(delta1.amount1())));
+            IERC20(Currency.unwrap(usdcUsdtPoolKey.currency0)).transfer(address(poolManager), uint256(-netUsdcDelta));
+            poolManager.settle();
+        } else if (netUsdcDelta > 0) {
+            // We're owed USDC - send to recipient
+            poolManager.take(usdcUsdtPoolKey.currency0, params.recipient, uint256(netUsdcDelta));
+        }
+        
+        if (netUsdtDelta < 0) {
+            // We owe USDT
+            poolManager.take(usdcUsdtPoolKey.currency1, address(this), uint128(int128(delta2.amount1())));
+            IERC20(Currency.unwrap(usdcUsdtPoolKey.currency1)).transfer(address(poolManager), uint256(-netUsdtDelta));
+            poolManager.settle();
+        } else if (netUsdtDelta > 0) {
+            // We're owed USDT
+            poolManager.take(usdcUsdtPoolKey.currency1, params.recipient, uint256(netUsdtDelta));
+        }
 
-        tickLower = lastTickLower;
-        tickUpper = lastTickUpper;
-        positionId = lastPositionId;
+        return abi.encode(liquidity);
     }
 
+    /// @notice Settle currency delta with PoolManager
+    function _settle(Currency currency, uint256 amount) internal {
+        if (currency.isAddressZero()) {
+            poolManager.settle{value: amount}();
+        } else {
+            poolManager.sync(currency);
+            // Note: For ERC20 tokens, would need to transfer first
+            poolManager.settle();
+        }
+    }
+
+    /// @notice Calculate spot quote for a swap
     function _spotQuote(uint128 amountIn, uint160 sqrtPriceX96, bool zeroForOne) internal pure returns (uint128) {
         if (zeroForOne) {
             uint256 intermediate = FullMath.mulDiv(amountIn, sqrtPriceX96, FixedPoint96.Q96);
@@ -152,80 +262,16 @@ contract AutoLpHelper is V4Router {
         }
     }
 
+    /// @notice Apply slippage tolerance to expected output
     function _applySlippage(uint128 amountOut) internal pure returns (uint128) {
         uint256 adjusted = (uint256(amountOut) * (10_000 - DEFAULT_SLIPPAGE_BPS)) / 10_000;
         return uint128(adjusted);
     }
 
-    function _mintWithBalances(PoolKey memory poolKey) internal {
-        if (currentOwner == address(0)) revert NotInProgress();
-        (uint160 sqrtPriceX96, int24 tickCurrent,,) = StateLibrary.getSlot0(poolManager, poolKey.toId());
-
-        int24 tickLower = _alignTick(tickCurrent + tickLowerOffset);
-        int24 tickUpper = _alignTick(tickCurrent + tickUpperOffset);
-
-        uint256 amount0 = poolKey.currency0.balanceOfSelf();
-        uint256 amount1 = poolKey.currency1.balanceOfSelf();
-
-        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            sqrtPriceX96,
-            TickMath.getSqrtPriceAtTick(tickLower),
-            TickMath.getSqrtPriceAtTick(tickUpper),
-            amount0,
-            amount1
-        );
-
-        uint256 positionId = uint256(keccak256(abi.encode(currentOwner, tickLower, tickUpper, block.number)));
-        bytes memory hookData = abi.encode(currentOwner, positionId, tickLower, tickUpper);
-
-        (BalanceDelta delta,) = poolManager.modifyLiquidity(
-            poolKey,
-            ModifyLiquidityParams({
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                liquidityDelta: int256(uint256(liquidity)),
-                salt: bytes32(positionId)
-            }),
-            hookData
-        );
-
-        _settleDelta(poolKey.currency0, delta.amount0());
-        _settleDelta(poolKey.currency1, delta.amount1());
-
-        _sweepIfAny(poolKey.currency0, currentOwner);
-        _sweepIfAny(poolKey.currency1, currentOwner);
-
-        lastTickLower = tickLower;
-        lastTickUpper = tickUpper;
-        lastPositionId = positionId;
-    }
-
+    /// @notice Align tick to tick spacing
     function _alignTick(int24 tick) internal view returns (int24 aligned) {
         int24 spacing = tickSpacing;
         int24 compressed = tick / spacing;
         aligned = compressed * spacing;
-    }
-
-    function _settleDelta(Currency currency, int128 delta) internal {
-        if (delta < 0) {
-            _settle(currency, address(this), uint256(uint128(-delta)));
-        } else if (delta > 0) {
-            _take(currency, address(this), uint256(uint128(delta)));
-        }
-    }
-
-    function _sweepIfAny(Currency currency, address to) internal {
-        uint256 balance = currency.balanceOfSelf();
-        if (balance > 0) currency.transfer(to, balance);
-    }
-
-    function _wrapEth(uint256 amount) internal {
-        (bool success,) = weth.call{value: amount}(abi.encodeWithSignature("deposit()"));
-        require(success, "WETH deposit failed");
-    }
-
-    function _pay(Currency currency, address payer, uint256 amount) internal override {
-        if (payer != address(this)) revert UnsupportedPayer(payer);
-        currency.transfer(address(poolManager), amount);
     }
 }

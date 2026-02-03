@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AutoLpHelper: {
-      address: "0x52d2ed7a102df15b212a800d4293099f18659f6c",
+      address: "0x29ea756b18c8714a0da70ea617ca90044198fad1",
       abi: [
         {
           type: "constructor",
@@ -16,6 +16,11 @@ const deployedContracts = {
               name: "_poolManager",
               type: "address",
               internalType: "contract IPoolManager",
+            },
+            {
+              name: "_posm",
+              type: "address",
+              internalType: "contract IPositionManager",
             },
             {
               name: "_ethUsdcPoolKey",
@@ -112,11 +117,6 @@ const deployedContracts = {
                   internalType: "contract IHooks",
                 },
               ],
-            },
-            {
-              name: "_weth",
-              type: "address",
-              internalType: "address",
             },
             {
               name: "_tickSpacing",
@@ -221,19 +221,6 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "msgSender",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
           name: "poolManager",
           inputs: [],
           outputs: [
@@ -247,23 +234,26 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "posm",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract IPositionManager",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "swapEthToUsdcUsdtAndMint",
           inputs: [],
           outputs: [
             {
-              name: "tickLower",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "tickUpper",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "positionId",
-              type: "uint256",
-              internalType: "uint256",
+              name: "liquidity",
+              type: "uint128",
+              internalType: "uint128",
             },
           ],
           stateMutability: "payable",
@@ -360,24 +350,71 @@ const deployedContracts = {
           stateMutability: "view",
         },
         {
-          type: "function",
-          name: "weth",
-          inputs: [],
-          outputs: [
+          type: "event",
+          name: "PositionCreated",
+          inputs: [
             {
-              name: "",
+              name: "owner",
               type: "address",
+              indexed: true,
               internalType: "address",
             },
+            {
+              name: "ethInput",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "usdcAmount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "usdtAmount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "tickLower",
+              type: "int24",
+              indexed: false,
+              internalType: "int24",
+            },
+            {
+              name: "tickUpper",
+              type: "int24",
+              indexed: false,
+              internalType: "int24",
+            },
+            {
+              name: "liquidity",
+              type: "uint128",
+              indexed: false,
+              internalType: "uint128",
+            },
+            {
+              name: "timestamp",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
           ],
-          stateMutability: "view",
+          anonymous: false,
         },
         {
           type: "error",
-          name: "ActionNotSupported",
+          name: "InsufficientOutput",
           inputs: [
             {
-              name: "action",
+              name: "expected",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "actual",
               type: "uint256",
               internalType: "uint256",
             },
@@ -385,156 +422,8 @@ const deployedContracts = {
         },
         {
           type: "error",
-          name: "DeltaNotNegative",
-          inputs: [
-            {
-              name: "currency",
-              type: "address",
-              internalType: "Currency",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "DeltaNotPositive",
-          inputs: [
-            {
-              name: "currency",
-              type: "address",
-              internalType: "Currency",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "InProgress",
+          name: "UnauthorizedCaller",
           inputs: [],
-        },
-        {
-          type: "error",
-          name: "InputLengthMismatch",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InsufficientBalance",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InvalidBips",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InvalidHopSlippageLength",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "NotInProgress",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "NotPoolManager",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "UnsupportedAction",
-          inputs: [
-            {
-              name: "action",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "UnsupportedPayer",
-          inputs: [
-            {
-              name: "payer",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "V4TooLittleReceived",
-          inputs: [
-            {
-              name: "minAmountOutReceived",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "amountReceived",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "V4TooLittleReceivedPerHop",
-          inputs: [
-            {
-              name: "hopIndex",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "maxPrice",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "price",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "V4TooMuchRequested",
-          inputs: [
-            {
-              name: "maxAmountInRequested",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "amountRequested",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "V4TooMuchRequestedPerHop",
-          inputs: [
-            {
-              name: "hopIndex",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "maxPrice",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "price",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
         },
         {
           type: "error",
@@ -543,10 +432,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24377346,
+      deployedOnBlock: 24377348,
     },
     PetRegistry: {
-      address: "0x0efddbb35e9bbc8c762e5b4a0f627210b6c9a721",
+      address: "0xb11632a56608bad85562fae6f1af269d1fe9e8e6",
       abi: [
         {
           type: "constructor",
@@ -943,10 +832,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24377347,
+      deployedOnBlock: 24377348,
     },
     EggHatchHook: {
-      address: "0xd7400e73ba36388c71c850ac96288e390bd22ebe",
+      address: "0xb8c3d6cf4297202c45f61673804409b060400705",
       abi: [
         {
           type: "constructor",
@@ -1808,7 +1697,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24377347,
+      deployedOnBlock: 24377348,
     },
   },
 } as const;
