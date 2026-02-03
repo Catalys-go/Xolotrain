@@ -34,21 +34,22 @@
 **Morning (4 hours)**:
 
 - [x] Review architecture documents
-- [ ] Design PetRegistry contract
+- [x] Design PetRegistry contract
   - Pet struct: owner, positionId, chainId, health, birthBlock
   - Minting logic: `hatchFromHook()`
   - Health update: `updateHealth()` with `onlyAgent` modifier
   - Events: `PetHatched`, `HealthUpdated`
-- [ ] Design EggHatchHook contract
+- [x] Design EggHatchHook contract
   - Implement `afterAddLiquidity()` hook
   - Call `PetRegistry.hatchFromHook()`
   - Pass position data from hook params
 
 **Afternoon (4-6 hours)**:
 
-- [ ] Implement PetRegistry contract
-- [ ] Implement EggHatchHook contract
-- [ ] Write basic tests (Foundry)
+- [x] Implement PetRegistry contract
+- [x] Implement EggHatchHook contract
+- [x] Write basic tests (Foundry)
+- [ ] Update packages/nextjs/app/liquidity/page.tsx to properly show needed info from contracts
 - [ ] Deploy to local Anvil fork
 
 **Evening Review**:
