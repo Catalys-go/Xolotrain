@@ -305,46 +305,156 @@ mapping(uint256 => Pet) public pets;  // petId → Pet
 
 ---
 
-### Flow 4: User Travels (Cross-Chain Bridge)
+### Flow 4: User Travels (Cross-Chain Bridge) - Intent-Based via The Compact + Li.FI
 
 ```
-┌──────┐    ┌──────────┐    ┌──────────┐    ┌───────┐    ┌──────────────┐    ┌──────────┐
-│ User │───▶│ Frontend │───▶│  LI.FI   │───▶│Bridge│───▶│ AutoLpHelper │───▶│ Frontend │
-└──────┘    └──────────┘    └──────────┘    └───────┘    └──────────────┘    └──────────┘
-   │              │               │             │  (Dest Chain)    │               │
-   │ 1. Select    │               │             │                  │               │
-   │    dest chain│               │             │                  │               │
-   │              │               │             │                  │               │
-   │ 2. Close LP  │               │             │                  │               │
-   │    on source │               │             │                  │               │
-   │              │               │             │                  │               │
-   │ 3. Initiate  │               │             │                  │               │
-   │    bridge ───┴──────────────▶│             │                  │               │
-   │                               │             │                  │               │
-   │                               │ 4. Bridge  │                  │               │
-   │                               │    assets ─▶│                  │               │
-   │                               │             │                  │               │
-   │                               │             │ 5. Tx on dest:  │               │
-   │                               │             │    Create LP ───▶│               │
-   │                               │             │                  │               │
-   │                               │             │                  │ 6. Update    │
-   │                               │             │                  │    PetRegistry│
-   │                               │             │                  │    (new chain)│
-   │                               │             │                  │               │
-   │◀──────────────────────────────┴─────────────┴──────────────────┴───────────────┘
-   │  7. Travel complete → axolotl on new chain
-   │
-   ▼
-┌──────────┐
-│ Frontend │─────▶ Animate travel, update chain badge
+┌──────┐    ┌──────────┐    ┌──────────────┐    ┌────────────┐    ┌──────────────┐    ┌──────────────┐
+│ User │───▶│ Frontend │───▶│ AutoLpHelper │───▶│ TheCompact │───▶│ Solver Bot   │───▶│ AutoLpHelper │
+│      │    │          │    │ (Source)     │    │ (Source)   │    │ (Off-chain)  │    │ (Dest)       │
+└──────┘    └──────────┘    └──────────────┘    └────────────┘    └──────────────┘    └──────────────┘
+   │              │                  │                  │                  │                 │
+   │ 1. Select    │                  │                  │                  │                 │
+   │    dest chain│                  │                  │                  │                 │
+   │              │                  │                  │                  │                 │
+   │ 2. Sign      │                  │                  │                  │                 │
+   │    compact ──┴─────────────────▶│                  │                  │                 │
+   │    (EIP-712) │                  │                  │                  │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │ 3. Close LP      │                  │                 │
+   │              │                  │    position      │                  │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │ 4. Deposit USDC  │                  │                 │
+   │              │                  │    + USDT into   │                  │                 │
+   │              │                  │    TheCompact ──▶│                  │                 │
+   │              │                  │    (Resource locks)                │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │ 5. Register      │                  │                 │
+   │              │                  │    MultichainCompact                │                 │
+   │              │                  │    with witness  │                  │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │ 6. Event:        │                 │
+   │              │                  │                  │    IntentCreated │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │ 7. See intent   │
+   │              │                  │                  │                  │    evaluates    │
+   │              │                  │                  │                  │    profitability│
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │ 8. Use Li.FI SDK│
+   │              │                  │                  │                  │    getRoutes()  │
+   │              │                  │                  │                  │    (optimal     │
+   │              │                  │                  │                  │    bridge)      │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │ 9. Bridge own   │
+   │              │                  │                  │                  │    funds via    │
+   │              │                  │                  │                  │    Li.FI        │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │ 10. Create LP ─▶│
+   │              │                  │                  │                  │    on behalf of │
+   │              │                  │                  │                  │    user         │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │◀────────────────┘
+   │              │                  │                  │                  │ 11. Get positionId
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │ 12. Submit claim │                 │
+   │              │                  │                  │◀─────────────────┘                 │
+   │              │                  │                  │    (proof of LP) │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │ 13. Verify claim │                 │
+   │              │                  │                  │     release locks│                 │
+   │              │                  │                  │     to solver    │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │ 14. Event:       │                 │
+   │              │                  │                  │     ClaimProcessed                 │
+   │              │◀─────────────────┴──────────────────┴──────────────────┘                 │
+   │ 15. Travel complete → axolotl on new chain                                             │
+   │                                                                                         │
+   ▼                                                                                         │
+┌──────────┐                                                                                │
+│ Frontend │─────▶ Animate travel ("Boarding → In Transit → Arrived")                      │
 └──────────┘
 ```
 
+**Step-by-Step**:
+
+1. User selects destination chain (e.g., "Travel to Base")
+2. User signs **MultichainCompact** (EIP-712 signature - one click!)
+   - Contains: destination chain, tick range, minimum liquidity
+   - Witness data: petId, desired position params
+3. `AutoLpHelper.travelToChain(petId, destinationChainId, signature)` executes:
+   - Closes existing LP position → USDC + USDT
+4. Deposits USDC + USDT into **The Compact** (creates resource locks - ERC6909 tokens)
+5. Registers MultichainCompact with allocator + arbiter addresses
+6. Emits `IntentCreated(compactId, destinationChain, petId)` event
+7. **Solver bot** (off-chain) sees intent and evaluates:
+   - Calculate costs (bridge fees + gas + slippage)
+   - Calculate revenue (locked assets on source chain)
+   - If profitable: proceed
+8. **Solver uses Li.FI SDK** to find optimal bridge route:
+   ```typescript
+   const routes = await lifi.getRoutes({
+     fromChainId: 11155111, // Sepolia
+     toChainId: 84532,      // Base Sepolia
+     fromTokenAddress: USDC_ADDRESS,
+     toTokenAddress: USDC_ADDRESS,
+     fromAmount: intent.usdcAmount,
+   });
+   // Li.FI returns best route (Across, Stargate, etc.)
+   ```
+9. Solver bridges own funds to destination using **Li.FI Composer**:
+   ```typescript
+   await lifi.executeRoute(routes[0]);
+   ```
+10. Solver calls `AutoLpHelper.swapEthToUsdcUsdtAndMint()` on destination
+    - Creates LP position on behalf of user
+    - Gets positionId from transaction receipt
+11. Solver receives positionId confirming LP creation
+12. Solver calls `LPMigrationArbiter.verifyAndClaim(positionId, compactId, solver)`
+13. Arbiter verifies:
+    - LP position exists on destination
+    - Position matches compact conditions (liquidity, tick range)
+    - Arbiter calls `TheCompact.processClaim()` to release locked assets to solver
+14. Emits `ClaimProcessed(compactId, solver, timestamp)`
+15. Frontend detects event, shows "Arrived!" animation
+
+**User Experience**:
+
+- ✨ **One signature** - no manual bridging steps
+- ⚡ **2-5 minutes** - faster than traditional bridge
+- 🎭 **Animated journey** - "Boarding → In Transit → Arrived"
+- 💰 **Optimal routing** - Li.FI finds cheapest bridge automatically
+- 🤖 **Automated** - solver handles all complexity
+- 🔒 **Trustless** - The Compact guarantees solver gets paid
+
+**Trust Model**:
+
+- User trusts The Compact protocol (audited)
+- User trusts allocator won't censor valid claims
+- User trusts arbiter will verify conditions correctly
+- Solver trusts allocator won't double-spend locked funds
+- **User doesn't need to trust solver** - funds are locked in smart contract
+- **Solver trusts Li.FI SDK** - for optimal bridge routing
+
+**Li.FI Integration Points**:
+
+1. **Route Discovery**: `lifi.getRoutes()` finds optimal bridge (cheapest/fastest)
+2. **Multi-Bridge Support**: Across, Stargate, Hop, Connext, etc.
+3. **Execution**: `lifi.executeRoute()` handles bridge-specific logic
+4. **Status Tracking**: `lifi.getStatus()` monitors bridge completion
+
+**Why This Architecture?**
+
+- **The Compact**: Provides intent layer and trustless settlement
+- **Li.FI**: Provides optimal cross-chain routing for solver
+- **Together**: User gets one-click UX, solver gets best execution
+
+---
+
 **Challenge**: Cross-chain state synchronization
 
-- **Option A**: PetRegistry deployed on each chain independently
-- **Option B**: Use cross-chain messaging (LayerZero, Axelar)
-- **MVP**: Option A (simpler, new pet on each chain)
+- **Option A**: PetRegistry deployed on each chain independently (separate pets per chain)
+- **Option B**: Use cross-chain messaging (LayerZero, Axelar) to sync pet state
+- **MVP (Hackathon)**: Option A - simpler, new pet on each chain with reference to original
+- **Production**: Option B - single pet travels between chains
 
 ---
 
@@ -397,10 +507,69 @@ agent/
 ├── monitor.ts                 // Event monitoring
 ├── healthCalculator.ts        // Deterministic health logic
 ├── updateService.ts           // Submit health updates to chain
-├── solver.ts                  // Fulfill travel intents (The Compact)
-├── bridgeService.ts           // Handle cross-chain bridging
-└── config.ts                  // Chain configs, RPC endpoints, solver wallet
+├── solver.ts                  // Fulfill travel intents (The Compact + Li.FI)
+├── lifiService.ts             // Li.FI SDK wrapper
+└── config.ts                  // Chain configs, RPC endpoints, solver wallet, Li.FI API key
 ```
+
+**Health Monitoring Agent**:
+
+- Watches `PositionCreated`, `PositionModified`, `PositionClosed` events
+- Queries Uniswap v4 position state every 60 seconds
+- Calculates health based on in-range vs out-of-range time
+- Calls `PetRegistry.updateHealth()` when health changes
+- Logs all actions with timestamps for auditability
+
+**Solver Bot** (The Compact + Li.FI):
+
+```typescript
+// Main solver workflow
+async function fulfillIntent(intent: TravelIntent) {
+  // 1. Evaluate profitability
+  const cost = await estimateCosts(intent);
+  const revenue = intent.lockedUSDC + intent.lockedUSDT;
+  if (revenue < cost) return; // Not profitable
+
+  // 2. Use Li.FI SDK to find optimal route
+  const routes = await lifi.getRoutes({
+    fromChainId: intent.sourceChainId,
+    toChainId: intent.destinationChainId,
+    fromTokenAddress: USDC_ADDRESS,
+    toTokenAddress: USDC_ADDRESS,
+    fromAmount: intent.usdcAmount,
+  });
+
+  // 3. Execute bridge via Li.FI Composer
+  const bridgeTx = await lifi.executeRoute(routes[0]);
+  await waitForBridgeCompletion(bridgeTx);
+
+  // 4. Create LP on destination
+  const lpTx = await autoLpHelper.swapEthToUsdcUsdtAndMint({
+    value: calculateETHNeeded(intent),
+  });
+
+  // 5. Submit claim to arbiter
+  const positionId = lpTx.events.PositionCreated.positionId;
+  await arbiter.verifyAndClaim(positionId, intent.compactId, SOLVER_ADDRESS);
+
+  // 6. Receive payment on source chain (locked USDC + USDT)
+}
+```
+
+**Li.FI Integration Details**:
+
+- **Route Discovery**: Finds cheapest/fastest bridge (Across, Stargate, Hop, etc.)
+- **Multi-Bridge Support**: Automatically selects optimal bridge per route
+- **Gas Estimation**: Calculates total cost including bridge fees
+- **Status Monitoring**: Tracks bridge completion via `lifi.getStatus()`
+- **Error Handling**: Retries with different routes if bridge fails
+
+**Solver Economics**:
+
+- Maintains capital float on each chain (e.g., 10 ETH per chain)
+- Calculates: `profit = lockedAssets - (bridgeFees + gasCost + slippage)`
+- Only fulfills if `profit > minThreshold` (e.g., 0.1%)
+- Rebalances liquidity between chains periodically using Li.FI
 
 ---
 

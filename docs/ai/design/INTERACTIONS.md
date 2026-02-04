@@ -374,75 +374,151 @@ Fees Collected!
 
 ---
 
-### 8. Travel to Another Chain
+### 8. Travel to Another Chain (Intent-Based via The Compact + Li.FI)
 
-**User Action**: Click "Travel" → Select destination chain → Confirm
+**User Action**: Click "Travel" → Select destination chain → Sign intent (1 signature!)
 
 **Frontend Flow**:
 
 ```typescript
-// Step 1: Close LP on source chain
+// Step 1: User selects destination chain from dropdown
+const selectedChain = destinationChain; // User picks from: Sepolia, Base, etc.
+
+// Step 2: Prepare MultichainCompact parameters
+const travelParams = {
+  petId: userPet.id,
+  destinationChainId: selectedChain.id, // e.g., 84532 (Base Sepolia), 11155111 (Sepolia), 8453 (Base), 1 (Ethereum)
+  tickLower: userPet.tickLower, // Keep same range
+  tickUpper: userPet.tickUpper,
+  minLiquidity: userPet.liquidity * 0.95, // Allow 5% slippage
+  deadline: Date.now() + 3600, // 1 hour expiry
+};
+
+// Step 3: User signs EIP-712 compact
+const signature = await signTypedData({
+  domain: COMPACT_DOMAIN,
+  types: MULTICHAIN_COMPACT_TYPES,
+  value: travelParams,
+});
+
+// Step 4: Single transaction creates intent
 await writeContractAsync({
-  functionName: "closeLiquidity",
-  args: [petId],
+  contractName: "AutoLpHelper",
+  functionName: "travelToChain",
+  args: [travelParams, signature],
 });
 
-// Step 2: Bridge via LI.FI (or manual bridge)
-const lifiQuote = await getLifiQuote({
-  fromChain: currentChain,
-  toChain: destinationChain,
-  fromToken: "ETH",
-  toToken: "ETH",
-  amount: ethAmount,
-});
-
-await executeLifiBridge(lifiQuote);
-
-// Step 3: Create new LP on destination chain
-// (User must switch network and execute manually for MVP)
+// ✅ Done! Solver bot handles everything else
 ```
 
 **What Happens**:
 
-1. LP position closed on source chain
-2. Assets (ETH) bridged to destination chain
-3. User manually creates new LP on destination
-4. PetRegistry on new chain mints new pet (OR updates via cross-chain message)
+**On Source Chain (Sepolia)**:
+1. `AutoLpHelper.travelToChain()` closes LP position → USDC + USDT
+2. Deposits USDC + USDT into The Compact (creates resource locks)
+3. Registers MultichainCompact with witness data
+4. Emits `IntentCreated(compactId, petId, destinationChainId)` event
+
+**Solver Bot Sees Intent**:
+5. Monitors `IntentCreated` events
+6. Calculates profitability: `lockedAssets - (bridgeFees + gas)`
+7. Uses **Li.FI SDK** to find optimal bridge route:
+   ```typescript
+   const routes = await lifi.getRoutes({
+     fromChainId: 11155111, // Sepolia
+     toChainId: 84532,      // Base
+     fromTokenAddress: USDC,
+     toTokenAddress: USDC,
+     fromAmount: intent.usdcAmount,
+   });
+   ```
+
+**Solver Fulfills (Off-Chain)**:
+8. Bridges own capital to Base via **Li.FI Composer**
+9. Creates LP position on Base on behalf of user
+
+**On Destination Chain (Base)**:
+10. Solver calls `AutoLpHelper.swapEthToUsdcUsdtAndMint()`
+11. Gets `positionId` from transaction receipt
+12. Calls `LPMigrationArbiter.verifyAndClaim(positionId, compactId, solverAddress)`
+
+**Settlement (Back to Source Chain)**:
+13. Arbiter verifies LP exists and matches conditions
+14. Calls `TheCompact.processClaim()` to release locked USDC + USDT to solver
+15. Emits `ClaimProcessed(compactId, solver, timestamp)`
 
 **State Changes**:
 
-- Source chain: LP closed, pet marked as "traveling"
-- Destination chain: New LP created, pet appears
+- Source chain: LP closed, assets locked in The Compact, then released to solver
+- Destination chain: New LP created, new pet minted (Option A: separate pet per chain)
+- User sees: "Arrived!" notification when `ClaimProcessed` event detected
 
 **Animation**:
 
-- Axolotl boards a train/portal
-- Travel progress bar (bridge in progress)
-- Arrival animation on destination
-- Chain badge updates (Sepolia → Base)
+```
+User signs → "Boarding train..." 
+          ↓
+Solver working → "In Transit..." (show progress bar)
+          ↓
+LP created → "Arrived!" (celebration animation)
+          ↓
+Chain badge updates (Sepolia 🔵 → Base 🟣)
+```
 
 **UI Flow**:
 
 ```
-┌─────────────────────────────┐
-│  Travel to Base Sepolia?    │
-│                             │
-│  Current: Sepolia 🔵        │
-│  Destination: Base 🟣       │
-│                             │
-│  Bridge Time: ~10 minutes   │
-│  Gas Cost: ~$0.50           │
-│                             │
-│  [Cancel]  [Confirm Travel] │
-└─────────────────────────────┘
+┌─────────────────────────────────────────┐
+│  Travel to Base Sepolia?                │
+│                                         │
+│  Current: Sepolia 🔵                    │
+│  Destination: Base 🟣                   │
+│                                         │
+│  Position: $300 USDC/USDT LP            │
+│  Estimated Time: 2-5 minutes ⚡        │
+│  Cost: Solver finds best route via Li.FI│
+│                                         │
+│  ✨ One signature - automatic travel! │
+│                                         │
+│  [Cancel]  [Sign & Travel] 🚀          │
+└─────────────────────────────────────────┘
+
+After signing:
+┌─────────────────────────────────────────┐
+│  🚂 Travel in Progress                  │
+│                                         │
+│  ▓▓▓▓▓▓▓▓▓░░░░░░░ 60%                   │
+│                                         │
+│  ✅ Intent created on Sepolia          │
+│  ⏳ Solver bridging via Li.FI...        │
+│  ⏳ Creating LP on Base...              │
+│                                         │
+│  Solver: 0x1234...5678                  │
+└─────────────────────────────────────────┘
 ```
+
+**User Experience Benefits**:
+
+- ✨ **One signature** - no manual bridging steps
+- ⚡ **2-5 minutes** - faster than traditional multi-tx flow
+- 💰 **Optimal pricing** - Li.FI finds cheapest bridge automatically
+- 🔒 **Trustless** - The Compact guarantees execution
+- 🤖 **Automated** - Solver handles all complexity
 
 **Edge Cases**:
 
-- Bridge unavailable → Show error
-- Insufficient gas on destination → Warn before bridging
-- Bridge stuck → Show support instructions
+- No solver available → Intent expires after deadline, refund available
+- Bridge fails → Solver retries with different Li.FI route
+- Slippage too high → Arbiter rejects claim, solver doesn't get paid
 - **MVP limitation**: Separate pet on each chain (no cross-chain state sync)
+- **Future**: Support intent cancellation before fulfillment
+
+**Technical Details**:
+
+- **The Compact**: Intent settlement layer (trustless escrow)
+- **Li.FI**: Bridge routing layer (finds optimal path for solver)
+- **Solver Economics**: Only profitable intents get fulfilled
+- **Witness Data**: Encodes LP creation requirements (tick range, min liquidity)
 
 ---
 
