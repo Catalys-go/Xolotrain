@@ -62,28 +62,46 @@ const LiquidityPage: NextPage = () => {
 
   const { data: petRegistry } = useDeployedContractInfo({ contractName: "PetRegistry" });
   const { data: autoLpHelper } = useDeployedContractInfo({ contractName: "AutoLpHelper" });
+  const { data: eggHatchHook } = useDeployedContractInfo({ contractName: "EggHatchHook" });
+
+  // Get total pets minted
+  const { data: totalSupply } = useScaffoldReadContract({
+    contractName: "PetRegistry",
+    functionName: "totalSupply",
+    query: { enabled: Boolean(petRegistry?.address) },
+  });
+
+  // Get user's pets
+  const { data: userPetIds } = useScaffoldReadContract({
+    contractName: "PetRegistry",
+    functionName: "getPetsByOwner",
+    args: [connectedAddress],
+    query: { enabled: Boolean(petRegistry?.address && connectedAddress) },
+  });
 
   const petId = Number(petIdInput);
   const isPetIdValid = Number.isInteger(petId) && petId > 0;
 
   const { data: petData } = useScaffoldReadContract({
     contractName: "PetRegistry",
-    functionName: "pets",
+    functionName: "getPet",
     args: [isPetIdValid ? BigInt(petId) : undefined],
     query: { enabled: Boolean(petRegistry?.address && isPetIdValid) },
   });
 
-  const hasPet = Boolean(
-    petData && (petData as any).owner && (petData as any).owner !== "0x0000000000000000000000000000000000000000",
-  );
-  const petOwner = (petData as any)?.owner as string | undefined;
-  const petHealth = (petData as any)?.health as bigint | undefined;
-  const petPoolId = (petData as any)?.poolId as string | undefined;
-  const petPositionId = (petData as any)?.positionId as bigint | undefined;
+  const hasPet = Boolean(petData && petData.owner && petData.owner !== "0x0000000000000000000000000000000000000000");
+  const petOwner = petData?.owner;
+  const petHealth = petData?.health;
+  const petPoolId = petData?.poolId;
+  const petPositionId = petData?.positionId;
+  const petChainId = petData?.chainId;
+  const petLastUpdate = petData?.lastUpdate;
 
   const matchesConnected = Boolean(connectedAddress && petOwner?.toLowerCase() === connectedAddress.toLowerCase());
   const hasLpPosition = Boolean(petPositionId && petPositionId !== 0n);
   const isEggHatched = hasPet && hasLpPosition;
+
+  const userPetCount = (userPetIds as bigint[])?.length ?? 0;
 
   const { writeContractAsync, isPending } = useScaffoldWriteContract({
     contractName: "AutoLpHelper",
@@ -194,12 +212,46 @@ const LiquidityPage: NextPage = () => {
 
         <div className="card bg-base-100 shadow-xl lg:col-span-2">
           <div className="card-body">
-            <h2 className="card-title">LP + Egg Status</h2>
+            <h2 className="card-title">Your Pets</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="stat bg-base-200 rounded-xl">
+                <div className="stat-title">Total Pets Minted</div>
+                <div className="stat-value text-2xl">{totalSupply?.toString() ?? "0"}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-xl">
+                <div className="stat-title">Your Pets</div>
+                <div className="stat-value text-2xl">{userPetCount}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-xl">
+                <div className="stat-title">Hatched</div>
+                <div className="stat-value text-2xl">{isEggHatched ? "✓" : "—"}</div>
+              </div>
+            </div>
+
+            {userPetCount > 0 && (
+              <div className="mb-4">
+                <div className="text-sm font-semibold mb-2">Your Pet IDs:</div>
+                <div className="flex flex-wrap gap-2">
+                  {(userPetIds as bigint[])?.map(id => (
+                    <button
+                      key={id.toString()}
+                      className={`btn btn-sm ${petIdInput === id.toString() ? "btn-primary" : "btn-outline"}`}
+                      onClick={() => setPetIdInput(id.toString())}
+                    >
+                      Pet #{id.toString()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="divider">Selected Pet Details</div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm text-base-content/70">Pet ID</label>
                 <input
-                  className="input input-bordered"
+                  className="input input-bordered w-full"
                   value={petIdInput}
                   onChange={event => setPetIdInput(event.target.value)}
                   placeholder="Enter pet ID"
@@ -208,20 +260,77 @@ const LiquidityPage: NextPage = () => {
               <div className="space-y-2">
                 <label className="text-sm text-base-content/70">Status</label>
                 <div className="p-3 rounded-xl bg-base-200">
-                  <div className="text-sm">Has Egg: {hasPet ? "Yes" : "No"}</div>
-                  <div className="text-sm">Egg Hatched: {isEggHatched ? "Yes" : "No"}</div>
-                  <div className="text-sm">LP Position: {hasLpPosition ? "Yes" : "No"}</div>
-                  <div className="text-sm">Owned by Wallet: {matchesConnected ? "Yes" : "No"}</div>
+                  <div className="text-sm">Exists: {hasPet ? "✓ Yes" : "✗ No"}</div>
+                  <div className="text-sm">Hatched: {isEggHatched ? "✓ Yes" : "✗ No"}</div>
+                  <div className="text-sm">Has LP: {hasLpPosition ? "✓ Yes" : "✗ No"}</div>
+                  <div className="text-sm">Yours: {matchesConnected ? "✓ Yes" : "✗ No"}</div>
                 </div>
               </div>
             </div>
+
             <div className="divider" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="text-sm">Pool ID: {petPoolId ?? "—"}</div>
-              <div className="text-sm">Position ID: {petPositionId?.toString() ?? "—"}</div>
-              <div className="text-sm">Health: {petHealth?.toString() ?? "—"}</div>
-              <div className="text-sm">Registry: {petRegistry?.address ?? "Not deployed"}</div>
-              <div className="text-sm">Auto LP Helper: {autoLpHelper?.address ?? "Not deployed"}</div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="space-y-2">
+                <div>
+                  <span className="font-semibold">Owner:</span>{" "}
+                  {petOwner ? <Address address={petOwner as `0x${string}`} /> : "—"}
+                </div>
+                <div>
+                  <span className="font-semibold">Health:</span> {petHealth?.toString() ?? "—"} / 100
+                </div>
+                <div>
+                  <span className="font-semibold">Chain ID:</span> {petChainId?.toString() ?? "—"}
+                </div>
+                <div>
+                  <span className="font-semibold">Last Update:</span>{" "}
+                  {petLastUpdate ? new Date(Number(petLastUpdate) * 1000).toLocaleString() : "—"}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <span className="font-semibold">Pool ID:</span>
+                  <div className="text-xs break-all">{petPoolId ?? "—"}</div>
+                </div>
+                <div>
+                  <span className="font-semibold">Position ID:</span> {petPositionId?.toString() ?? "—"}
+                </div>
+              </div>
+            </div>
+
+            <div className="divider">Contract Addresses</div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="font-semibold">PetRegistry:</span>
+                {petRegistry?.address ? (
+                  <div className="break-all">
+                    <Address address={petRegistry.address as `0x${string}`} />
+                  </div>
+                ) : (
+                  " Not deployed"
+                )}
+              </div>
+              <div>
+                <span className="font-semibold">AutoLpHelper:</span>
+                {autoLpHelper?.address ? (
+                  <div className="break-all">
+                    <Address address={autoLpHelper.address as `0x${string}`} />
+                  </div>
+                ) : (
+                  " Not deployed"
+                )}
+              </div>
+              <div>
+                <span className="font-semibold">EggHatchHook:</span>
+                {eggHatchHook?.address ? (
+                  <div className="break-all">
+                    <Address address={eggHatchHook.address as `0x${string}`} />
+                  </div>
+                ) : (
+                  " Not deployed"
+                )}
+              </div>
             </div>
           </div>
         </div>

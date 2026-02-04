@@ -27,13 +27,11 @@ contract DeployScript is ScaffoldETHDeploy {
         PoolKey memory ethUsdt = _readPoolKey(json, string.concat(prefix, ".ETH_USDT"));
         PoolKey memory usdcUsdt = _readPoolKey(json, string.concat(prefix, ".USDC_USDT"));
         address positionManager = vm.parseJsonAddress(json, string.concat(prefix, ".positionManager"));
-        
-        // Get poolManager from PositionManager
-        IPoolManager poolManager = IPositionManager(positionManager).poolManager();
+        address poolManager = vm.parseJsonAddress(json, string.concat(prefix, ".poolManager"));
 
         // 1) Deploy AutoLpHelper
         AutoLpHelper autoLpHelper = new AutoLpHelper(
-            poolManager,
+            IPoolManager(poolManager),
             IPositionManager(positionManager),
             ethUsdc,
             ethUsdt,

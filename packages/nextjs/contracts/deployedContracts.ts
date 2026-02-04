@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AutoLpHelper: {
-      address: "0x29ea756b18c8714a0da70ea617ca90044198fad1",
+      address: "0x94afd75db06a12fd106f02c194835a6dcb47bbee",
       abi: [
         {
           type: "constructor",
@@ -155,6 +155,71 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "POOL_MANAGER",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract IPoolManager",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "POSM",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract IPositionManager",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "TICK_LOWER_OFFSET",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "int24",
+              internalType: "int24",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "TICK_SPACING",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "int24",
+              internalType: "int24",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "TICK_UPPER_OFFSET",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "int24",
+              internalType: "int24",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "ethUsdcPoolKey",
           inputs: [],
           outputs: [
@@ -221,32 +286,6 @@ const deployedContracts = {
         },
         {
           type: "function",
-          name: "poolManager",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract IPoolManager",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "posm",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract IPositionManager",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
           name: "swapEthToUsdcUsdtAndMint",
           inputs: [],
           outputs: [
@@ -257,45 +296,6 @@ const deployedContracts = {
             },
           ],
           stateMutability: "payable",
-        },
-        {
-          type: "function",
-          name: "tickLowerOffset",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "int24",
-              internalType: "int24",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "tickSpacing",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "int24",
-              internalType: "int24",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "tickUpperOffset",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "int24",
-              internalType: "int24",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -432,10 +432,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24377348,
+      deployedOnBlock: 24379745,
     },
     PetRegistry: {
-      address: "0xb11632a56608bad85562fae6f1af269d1fe9e8e6",
+      address: "0xec5ab17cc35221cdf54eaeb0868ea82d4d75d9bf",
       abi: [
         {
           type: "constructor",
@@ -451,6 +451,95 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "exists",
+          inputs: [
+            {
+              name: "petId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bool",
+              internalType: "bool",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getPet",
+          inputs: [
+            {
+              name: "petId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "tuple",
+              internalType: "struct PetRegistry.Pet",
+              components: [
+                {
+                  name: "owner",
+                  type: "address",
+                  internalType: "address",
+                },
+                {
+                  name: "health",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "lastUpdate",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "chainId",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "poolId",
+                  type: "bytes32",
+                  internalType: "bytes32",
+                },
+                {
+                  name: "positionId",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+              ],
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "getPetsByOwner",
+          inputs: [
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256[]",
+              internalType: "uint256[]",
             },
           ],
           stateMutability: "view",
@@ -607,6 +696,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "totalSupply",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "transferOwnership",
           inputs: [
             {
@@ -634,6 +736,24 @@ const deployedContracts = {
             },
             {
               name: "chainId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "updateHealthManual",
+          inputs: [
+            {
+              name: "petId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "health",
               type: "uint256",
               internalType: "uint256",
             },
@@ -761,6 +881,17 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "InvalidHealth",
+          inputs: [
+            {
+              name: "health",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+        },
+        {
+          type: "error",
           name: "InvalidHook",
           inputs: [
             {
@@ -789,6 +920,17 @@ const deployedContracts = {
         {
           type: "error",
           name: "NotHook",
+          inputs: [
+            {
+              name: "caller",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "NotOwner",
           inputs: [
             {
               name: "caller",
@@ -832,10 +974,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24377348,
+      deployedOnBlock: 24379746,
     },
     EggHatchHook: {
-      address: "0xb8c3d6cf4297202c45f61673804409b060400705",
+      address: "0x73992bad0ee2bf03588da062f1bdbcf45088ea07",
       abi: [
         {
           type: "constructor",
@@ -857,6 +999,45 @@ const deployedContracts = {
             },
           ],
           stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "POOL_ID",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "bytes32",
+              internalType: "bytes32",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "POOL_MANAGER",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "REGISTRY",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract IPetRegistry",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -1646,45 +1827,6 @@ const deployedContracts = {
           stateMutability: "pure",
         },
         {
-          type: "function",
-          name: "poolId",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "poolManager",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "registry",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract IPetRegistry",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
           type: "error",
           name: "OnlyPoolManager",
           inputs: [
@@ -1697,7 +1839,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24377348,
+      deployedOnBlock: 24379746,
     },
   },
 } as const;
