@@ -123,7 +123,7 @@
 // PetRegistry (Xolotrain)
 struct Pet {
     address owner;
-    uint256 positionId;  // Link to LP position
+    uint256 positionId;  // PositionManager NFT tokenId (user-owned)
     uint256 chainId;     // Current chain
     uint256 health;      // 0-100
     uint256 birthBlock;
@@ -163,7 +163,8 @@ mapping(uint256 => Pet) public pets;  // petId → Pet
    │                                  │                     │                    │
    │                                  │ 5. swap() ETH→USDC  │                    │
    │                                  │    swap() ETH→USDT  │                    │
-   │                                  │ 6. modifyLiquidity()│                    │
+   │                                  │ 6. POSM.modifyLiquiditiesWithoutUnlock()│
+   │                                  │    (MINT_POSITION_FROM_DELTAS)          │
    │                                  │                     │                    │
    │                                  │                     │ 7. afterAddLiquidity()
    │                                  │                     │                    │
@@ -191,24 +192,28 @@ mapping(uint256 => Pet) public pets;  // petId → Pet
 3. Frontend calls `AutoLpHelper.swapEthToUsdcUsdtAndMint{value: 0.1 ETH}()`
 4. AutoLpHelper calls `PoolManager.unlock()` with encoded params
 5. Inside unlock callback:
-   - Swap ETH → USDC
-   - Swap ETH → USDT
-   - Call `PoolManager.modifyLiquidity()` to create LP position
-6. PoolManager triggers `EggHatchHook.afterAddLiquidity()`
-7. Hook calls `PetRegistry.hatchFromHook(owner, positionId, tickLower, tickUpper)`
-8. PetRegistry mints new pet NFT with:
+   - Swap ETH → USDC (creates positive USDC delta)
+   - Swap ETH → USDT (creates positive USDT delta)
+   - Call `PositionManager.modifyLiquiditiesWithoutUnlock()` with `MINT_POSITION_FROM_DELTAS` action
+   - POSM uses the deltas to mint NFT-based LP position to user
+6. PoolManager triggers `EggHatchHook.afterAddLiquidity()` with hookData containing tokenId
+7. Hook calls `PetRegistry.hatchFromHook(owner, chainId, poolId, tokenId)`
+8. PetRegistry mints new pet with:
    - `owner = msg.sender`
-   - `positionId = hash(owner, tickLower, tickUpper, salt)`
+   - `positionId = tokenId` (PositionManager NFT)
    - `health = 100`
    - `chainId = block.chainid`
-9. Event emitted: `PetHatched(petId, owner, positionId)`
+9. Event emitted: `PetHatched(petId, owner, chainId, poolId, positionId)`
 10. Frontend listens for event, displays axolotl animation
 
 **Blockchain State Changes**:
 
-- PoolManager: New LP position created
-- PetRegistry: New pet NFT minted
-- User wallet: ETH spent, leftover USDC/USDT received
+- PoolManager: New LP position created in USDC/USDT pool
+- PositionManager: NFT minted to user (tokenId = positionId)
+- PetRegistry: New pet minted, linked to PositionManager NFT
+- User wallet: ETH spent, PositionManager NFT received, leftover USDC/USDT received
+
+**Key Architectural Note**: Positions are now **user-owned NFTs** via Uniswap v4 PositionManager, not owned by AutoLpHelper. Users can transfer, manage, or burn their positions independently. PetRegistry tracks which NFT corresponds to which pet.
 
 ---
 

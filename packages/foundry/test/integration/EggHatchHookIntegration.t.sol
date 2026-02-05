@@ -34,8 +34,8 @@ contract EggHatchHookIntegrationTest is Test {
     function setUp() public {
         vm.startPrank(deployer);
         
-        // Deploy registry first
-        registry = new PetRegistry();
+        // Deploy registry first (deployer is owner)
+        registry = new PetRegistry(deployer);
         
         // Create pool key
         poolKey = PoolKey({
@@ -48,11 +48,10 @@ contract EggHatchHookIntegrationTest is Test {
         
         poolId = poolKey.toId();
         
-        // Deploy hook with registry
+        // Deploy hook with registry (poolId computed dynamically now)
         hook = new EggHatchHook(
             poolManager,
-            address(registry),
-            PoolId.unwrap(poolId)
+            address(registry)
         );
         
         // Set hook address in registry
@@ -66,7 +65,9 @@ contract EggHatchHookIntegrationTest is Test {
     function testFullHatchFlow() public {
         // Setup: User1 wants to create LP and hatch pet
         uint256 positionId = 42;
-        bytes memory hookData = abi.encode(user1, positionId);
+        int24 tickLower = -120;
+        int24 tickUpper = 120;
+        bytes memory hookData = abi.encode(user1, positionId, tickLower, tickUpper);
         
         // Verify initial state
         assertEq(registry.totalSupply(), 0);
@@ -76,8 +77,8 @@ contract EggHatchHookIntegrationTest is Test {
         vm.startPrank(poolManager);
         
         ModifyLiquidityParams memory params = ModifyLiquidityParams({
-            tickLower: -120,
-            tickUpper: 120,
+            tickLower: tickLower,
+            tickUpper: tickUpper,
             liquidityDelta: 100000,
             salt: bytes32(0)
         });
@@ -113,16 +114,19 @@ contract EggHatchHookIntegrationTest is Test {
     function testHookDataWithDifferentPositionIds() public {
         vm.startPrank(poolManager);
         
+        int24 tickLower = -TICK_SPACING;
+        int24 tickUpper = TICK_SPACING;
+        
         ModifyLiquidityParams memory params = ModifyLiquidityParams({
-            tickLower: -TICK_SPACING,
-            tickUpper: TICK_SPACING,
+            tickLower: tickLower,
+            tickUpper: tickUpper,
             liquidityDelta: 1000,
             salt: bytes32(0)
         });
         
-        // Create pets with different position IDs
+        // User1 creates multiple positions - all update SAME pet (idempotent)
         for (uint256 i = 1; i <= 5; i++) {
-            bytes memory hookData = abi.encode(user1, i * 100); // Position IDs: 100, 200, 300, 400, 500
+            bytes memory hookData = abi.encode(user1, i * 100, tickLower, tickUpper); // Position IDs: 100, 200, 300, 400, 500
             
             hook.afterAddLiquidity(
                 poolManager,
@@ -136,10 +140,11 @@ contract EggHatchHookIntegrationTest is Test {
         
         vm.stopPrank();
         
-        // Verify all pets have correct position IDs
-        for (uint256 i = 1; i <= 5; i++) {
-            PetRegistry.Pet memory pet = registry.getPet(i);
-            assertEq(pet.positionId, i * 100, "Position ID should match");
-        }
+        // Verify only ONE pet exists (idempotent behavior)
+        assertEq(registry.totalSupply(), 1, "Should have 1 pet (idempotent)");
+        
+        // Verify pet has latest position ID
+        PetRegistry.Pet memory pet = registry.getPet(1);
+        assertEq(pet.positionId, 500, "Pet should have latest position ID");
     }
 }

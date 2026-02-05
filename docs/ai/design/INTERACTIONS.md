@@ -28,7 +28,19 @@ This document catalogs all possible user interactions, agent behaviors, and bloc
 **State Changes**:
 
 - Frontend: `isConnected = true`, `address = 0x...`
+- Frontend: checks if user has pet hatched 
+  ```typescript
+  const { data: userPetIds } = useScaffoldReadContract({
+    contractName: "PetRegistry",
+    functionName: "getPetsByOwner",
+    args: [connectedAddress],
+    query: { enabled: Boolean(petRegistry?.address && connectedAddress) },
+  });
+  const hasPet = Boolean(petData && petData.owner && petData.owner !== "0x0000000000000000000000000000000000000000");
+  const isEggHatched = hasPet && hasLpPosition;
+  ```
 - User sees: Connected address in header
+- User sees: Egg waiting to be hatched
 - Available actions: All buttons now active
 
 **Edge Cases**:
@@ -36,6 +48,7 @@ This document catalogs all possible user interactions, agent behaviors, and bloc
 - Wrong network → Show network switch prompt
 - Wallet locked → Prompt to unlock
 - No wallet installed → Show installation instructions
+- Egg not displaying properly
 
 ---
 
@@ -53,20 +66,17 @@ await sendFaucetETH({ args: [userAddress] });
 **What Happens**:
 
 - Frontend calls faucet contract
-- Faucet sends 0.1 ETH to user
+- Faucet sends 1 ETH to user
 - Transaction confirmed
 
 **State Changes**:
 
-- User balance: +0.1 ETH
+- User balance: +1 ETH
 - User sees: Updated balance in UI
-- Button state: Disabled for cooldown period
 
 **Edge Cases**:
 
-- Cooldown active → Show countdown timer
 - Faucet empty → Show error message
-- Already has ETH → Optional skip
 
 ---
 
@@ -92,18 +102,21 @@ await writeContractAsync({
 1. User inputs ETH amount (e.g., 0.1 ETH)
 2. Wallet prompts for transaction approval
 3. AutoLpHelper executes:
-   - Swap 50% ETH → USDC
-   - Swap 50% ETH → USDT
-   - Create LP position in USDC/USDT pool
-4. EggHatchHook triggers on LP creation
-5. PetRegistry mints pet NFT
-6. Event emitted: `PetHatched(petId, owner, positionId, health, chainId)`
+   - Swap 50% ETH → USDC (creates positive delta)
+   - Swap 50% ETH → USDT (creates positive delta)
+   - Call PositionManager to mint NFT-based LP position using deltas
+   - LP position NFT minted to user (user-owned, transferable)
+4. EggHatchHook triggers on LP creation with hookData containing NFT tokenId
+5. PetRegistry mints pet linked to PositionManager NFT tokenId
+6. Event emitted: `PetHatched(petId, owner, chainId, poolId, positionId)`
 
 **State Changes**:
 
-- Blockchain: New LP position + Pet NFT created
-- User balance: -0.1 ETH, +dust USDC/USDT (leftovers)
+- Blockchain: New LP position + PositionManager NFT + Pet created
+- User balance: -0.1 ETH, +PositionManager NFT, +dust USDC/USDT (leftovers)
 - User sees: Egg cracking animation → Axolotl appears
+
+**Key Architectural Change**: LP positions are now **user-owned NFTs** (Uniswap v4 PositionManager), not controlled by AutoLpHelper. Users can transfer, manage, or burn their positions independently.
 
 **Data Returned**:
 

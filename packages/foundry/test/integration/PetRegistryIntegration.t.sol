@@ -18,7 +18,7 @@ contract PetRegistryIntegrationTest is Test {
 
     function setUp() public {
         vm.startPrank(owner);
-        registry = new PetRegistry();
+        registry = new PetRegistry(owner); // Owner is the contract owner
         registry.setHook(hook);
         registry.setAgent(agent);
         vm.stopPrank();
@@ -61,36 +61,44 @@ contract PetRegistryIntegrationTest is Test {
     function testMultipleOwnersMultiplePets() public {
         vm.startPrank(hook);
         
-        // Create 5 pets for different owners
+        // User1 creates first position - mints pet #1
         registry.hatchFromHook(user1, CHAIN_ID, POOL_ID, 1);
+        
+        // User1 creates second position - updates SAME pet (idempotent)
         registry.hatchFromHook(user1, CHAIN_ID, POOL_ID, 2);
+        
+        // User2 creates positions - mints pet #2
         registry.hatchFromHook(user2, CHAIN_ID, POOL_ID, 3);
         registry.hatchFromHook(user2, CHAIN_ID, POOL_ID, 4);
         registry.hatchFromHook(user2, CHAIN_ID, POOL_ID, 5);
         
         vm.stopPrank();
         
-        // Verify total supply
-        assertEq(registry.totalSupply(), 5);
+        // Verify total supply - 2 pets (one per user)
+        assertEq(registry.totalSupply(), 2, "Should have 2 pets (one per user)");
         
-        // Verify owner pet counts
-        assertEq(registry.getPetsByOwner(user1).length, 2);
-        assertEq(registry.getPetsByOwner(user2).length, 3);
+        // Verify owner pet counts - each has ONE pet
+        assertEq(registry.getPetsByOwner(user1).length, 1, "User1 should have 1 pet");
+        assertEq(registry.getPetsByOwner(user2).length, 1, "User2 should have 1 pet");
         
-        // Update health for various pets
+        // Verify pets were updated to latest positions
+        PetRegistry.Pet memory pet1 = registry.getPet(1);
+        assertEq(pet1.positionId, 2, "User1 pet should be at position 2 (latest)");
+        
+        PetRegistry.Pet memory pet2 = registry.getPet(2);
+        assertEq(pet2.positionId, 5, "User2 pet should be at position 5 (latest)");
+        
+        // Update health for both pets
         vm.startPrank(agent);
         registry.updateHealth(1, 90, CHAIN_ID);
-        registry.updateHealth(3, 70, CHAIN_ID);
-        registry.updateHealth(5, 50, CHAIN_ID);
+        registry.updateHealth(2, 70, CHAIN_ID);
         vm.stopPrank();
         
         // Verify health values
-        PetRegistry.Pet memory pet1 = registry.getPet(1);
-        PetRegistry.Pet memory pet3 = registry.getPet(3);
-        PetRegistry.Pet memory pet5 = registry.getPet(5);
+        pet1 = registry.getPet(1);
+        pet2 = registry.getPet(2);
         
         assertEq(pet1.health, 90);
-        assertEq(pet3.health, 70);
-        assertEq(pet5.health, 50);
+        assertEq(pet2.health, 70);
     }
 }
