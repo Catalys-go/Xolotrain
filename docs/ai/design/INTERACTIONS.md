@@ -28,7 +28,7 @@ This document catalogs all possible user interactions, agent behaviors, and bloc
 **State Changes**:
 
 - Frontend: `isConnected = true`, `address = 0x...`
-- Frontend: checks if user has pet hatched 
+- Frontend: checks if user has pet hatched
   ```typescript
   const { data: userPetIds } = useScaffoldReadContract({
     contractName: "PetRegistry",
@@ -36,7 +36,11 @@ This document catalogs all possible user interactions, agent behaviors, and bloc
     args: [connectedAddress],
     query: { enabled: Boolean(petRegistry?.address && connectedAddress) },
   });
-  const hasPet = Boolean(petData && petData.owner && petData.owner !== "0x0000000000000000000000000000000000000000");
+  const hasPet = Boolean(
+    petData &&
+    petData.owner &&
+    petData.owner !== "0x0000000000000000000000000000000000000000",
+  );
   const isEggHatched = hasPet && hasLpPosition;
   ```
 - User sees: Connected address in header
@@ -427,38 +431,40 @@ await writeContractAsync({
 **What Happens**:
 
 **On Source Chain (Sepolia)**:
+
 1. `AutoLpHelper.travelToChain()` closes LP position → USDC + USDT
 2. Deposits USDC + USDT into The Compact (creates resource locks)
 3. Registers MultichainCompact with witness data
 4. Emits `IntentCreated(compactId, petId, destinationChainId)` event
 
 **Solver Bot Sees Intent**:
+
 5. Monitors `IntentCreated` events
 6. Calculates profitability: `lockedAssets - (bridgeFees + gas)`
 7. Uses **Li.FI SDK** to find optimal bridge route:
-   ```typescript
-   const routes = await lifi.getRoutes({
-     fromChainId: 11155111, // Sepolia
-     toChainId: 84532,      // Base
-     fromTokenAddress: USDC,
-     toTokenAddress: USDC,
-     fromAmount: intent.usdcAmount,
-   });
-   ```
+```typescript
+const routes = await lifi.getRoutes({
+  fromChainId: 11155111, // Sepolia
+  toChainId: 84532, // Base
+  fromTokenAddress: USDC,
+  toTokenAddress: USDC,
+  fromAmount: intent.usdcAmount,
+});
+```
 
-**Solver Fulfills (Off-Chain)**:
-8. Bridges own capital to Base via **Li.FI Composer**
-9. Creates LP position on Base on behalf of user
-
-**On Destination Chain (Base)**:
-10. Solver calls `AutoLpHelper.swapEthToUsdcUsdtAndMint()`
-11. Gets `positionId` from transaction receipt
-12. Calls `LPMigrationArbiter.verifyAndClaim(positionId, compactId, solverAddress)`
-
+**Solver Fulfills (Off-Chain)**: 
 **Settlement (Back to Source Chain)**:
 13. Arbiter verifies LP exists and matches conditions
 14. Calls `TheCompact.processClaim()` to release locked USDC + USDT to solver
 15. Emits `ClaimProcessed(compactId, solver, timestamp)`
+9. Creates LP position on Base on behalf of user using bridged tokens
+
+**On Destination Chain (Base)**: 
+10. Solver calls `AutoLpHelper.mintLpFromTokens(usdcAmount, usdtAmount, userAddress)` on destination - Mints LP position using pre-bridged USDC/USDT tokens (no swapping needed) - Gets positionId from transaction receipt 
+11. Solver receives positionId confirming LP creation 
+12. Calls `LPMigrationArbiter.verifyAndClaim(positionId, compactId, solverAddress)`
+
+**Settlement (Back to Source Chain)**: 13. Arbiter verifies LP exists and matches conditions 14. Calls `TheCompact.processClaim()` to release locked USDC + USDT to solver 15. Emits `ClaimProcessed(compactId, solver, timestamp)`
 
 **State Changes**:
 
@@ -469,7 +475,7 @@ await writeContractAsync({
 **Animation**:
 
 ```
-User signs → "Boarding train..." 
+User signs → "Boarding train..."
           ↓
 Solver working → "In Transit..." (show progress bar)
           ↓

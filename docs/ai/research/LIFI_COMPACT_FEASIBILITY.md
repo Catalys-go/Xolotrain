@@ -519,7 +519,7 @@ export function TravelModal({ petId, onClose }: Props) {
 
 1. Use simplified allocator (no complex nonce management)
 2. Single solver (your own bot) instead of marketplace
-3. Li.FI can be optional (solver uses simple bridge)
+3. Li.FI composer/sdk used to move funds 
 4. Test on testnets only (Sepolia → Base Sepolia)
 
 **Verdict**: Tight but achievable for hackathon if prioritized. Consider as stretch goal.
@@ -528,7 +528,7 @@ export function TravelModal({ petId, onClose }: Props) {
 
 ## 🎯 Recommendation
 
-### Option A: Full Li.FI + The Compact (Recommended for Production)
+### Option A: Full Li.FI + The Compact (Recommended for Production, Target implementation for Hackathon)
 
 **Implement if**:
 
@@ -550,30 +550,6 @@ export function TravelModal({ petId, onClose }: Props) {
 - 🧪 More testing needed
 - 💰 Requires solver capital
 - 🐛 More failure modes to handle
-
----
-
-### Option B: Simplified Intent-Based (Recommended for Hackathon)
-
-**Use The Compact WITHOUT Li.FI**:
-
-- User signs compact for cross-chain LP migration
-- **Single trusted solver** (your backend) fulfills intents
-- Solver uses **simple bridge** (not Li.FI aggregation)
-- Proof of concept for intent-based migration
-
-**Pros**:
-
-- ⏰ Faster to implement (~20-25 hours)
-- 🎯 Demonstrates core concept
-- 🧪 Less complexity to test
-- 🏆 Still impressive for hackathon
-
-**Cons**:
-
-- ⚠️ Not fully decentralized (single solver)
-- 📊 No optimal routing (just one bridge)
-- 💸 Potentially higher costs
 
 ---
 
@@ -602,30 +578,17 @@ export function TravelModal({ petId, onClose }: Props) {
 
 ---
 
-## 🎖️ Final Verdict
-
-**For EthGlobal Hackathon: Implement Option B (Simplified Intent-Based)**
-
-### Why:
-
-1. **Novelty**: Shows understanding of intent-based architecture (judges love innovation)
-2. **UX**: One-click travel is magical for users
-3. **Feasible**: Can be completed in hackathon timeframe with shortcuts
-4. **Scalable**: Foundation for adding Li.FI routing + multi-solver later
-5. **Story**: "Traditional LP migration requires 6 transactions. With intents, it's 1 click."
-
 ### Implementation Plan:
 
 ```
 Week 1 (MVP):
 - Day 1-2: Build allocator + arbiter contracts
 - Day 3-4: Extend AutoLpHelper with travel function
-- Day 5: Build simple solver bot (your backend)
+- Day 5: Build simple solver bot (your backend), Add Li.FI for optimal routing
 - Day 6: Frontend integration + testing
 - Day 7: Demo preparation
 
 Post-Hackathon (Production):
-- Add Li.FI for optimal routing
 - Open solver network (allow anyone to fulfill)
 - Support more chains
 - Add solver competition UI

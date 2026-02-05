@@ -353,9 +353,9 @@ mapping(uint256 => Pet) public pets;  // petId → Pet
    │              │                  │                  │                  │    funds via    │
    │              │                  │                  │                  │    Li.FI        │
    │              │                  │                  │                  │                 │
-   │              │                  │                  │                  │ 10. Create LP ─▶│
-   │              │                  │                  │                  │    on behalf of │
-   │              │                  │                  │                  │    user         │
+   │              │                  │                  │                  │ 10. Mint LP ─▶│
+   │              │                  │                  │                  │    from USDC/   │
+   │              │                  │                  │                  │    USDT tokens  │
    │              │                  │                  │                  │                 │
    │              │                  │                  │                  │◀────────────────┘
    │              │                  │                  │                  │ 11. Get positionId
@@ -408,8 +408,10 @@ mapping(uint256 => Pet) public pets;  // petId → Pet
 9. Solver bridges own funds to destination using **Li.FI Composer**:
    ```typescript
    await lifi.executeRoute(routes[0]);
+   // USDC and USDT arrive on destination chain
    ```
-10. Solver calls `AutoLpHelper.swapEthToUsdcUsdtAndMint()` on destination
+10. Solver calls `AutoLpHelper.mintLpFromTokens(usdcAmount, usdtAmount, userAddress)` on destination
+    - Mints LP position using pre-bridged USDC/USDT tokens (no swapping needed)
     - Creates LP position on behalf of user
     - Gets positionId from transaction receipt
 11. Solver receives positionId confirming LP creation
@@ -493,6 +495,9 @@ app/
 ```
 contracts/
 ├── AutoLpHelper.sol           // Atomic ETH → LP creation + travel intents
+│   ├── swapEthToUsdcUsdtAndMint()    // For users: ETH → USDC/USDT → LP
+│   ├── mintLpFromTokens()             // For solver: USDC/USDT → LP (no swap)
+│   └── travelToChain()                // Intent creation
 ├── EggHatchHook.sol           // Uniswap v4 hook (afterAddLiquidity)
 ├── PetRegistry.sol            // Pet NFT + metadata storage
 ├── XolotrainAllocator.sol     // The Compact allocator (prevents double-spend)
@@ -547,11 +552,14 @@ async function fulfillIntent(intent: TravelIntent) {
   // 3. Execute bridge via Li.FI Composer
   const bridgeTx = await lifi.executeRoute(routes[0]);
   await waitForBridgeCompletion(bridgeTx);
+  // Now solver has USDC and USDT on destination chain
 
-  // 4. Create LP on destination
-  const lpTx = await autoLpHelper.swapEthToUsdcUsdtAndMint({
-    value: calculateETHNeeded(intent),
-  });
+  // 4. Mint LP position from bridged tokens
+  const lpTx = await autoLpHelper.mintLpFromTokens(
+    intent.usdcAmount,
+    intent.usdtAmount,
+    intent.userAddress, // Position created on behalf of user
+  );
 
   // 5. Submit claim to arbiter
   const positionId = lpTx.events.PositionCreated.positionId;
