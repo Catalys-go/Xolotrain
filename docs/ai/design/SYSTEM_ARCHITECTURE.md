@@ -65,29 +65,49 @@
 
 ### AGENT (Automated System)
 
-**What Agent Does**:
+**Unified Agent with Dual Responsibilities**:
 
+**1. Health Monitoring (Continuous)**:
 - ✅ Monitors blockchain events continuously
 - ✅ Watches LP position state (in-range/out-of-range)
 - ✅ Calculates health deterministically
 - ✅ Calls `PetRegistry.updateHealth()` when health changes
 - ✅ Triggers alerts to user (via frontend)
-- ✅ Logs all actions transparently
-- ✅ Maintains consistent state across chains
+
+**2. Intent Fulfillment (Event-Driven)**:
+- ✅ Monitors `IntentCreated` events from travel requests
+- ✅ Evaluates intent profitability
+- ✅ Uses Li.FI SDK to find optimal bridge routes
+- ✅ Creates LP positions on destination chains
+- ✅ Submits claims to receive payment
+
+**Agent Operational Principles**:
+- ✅ Logs all actions transparently (health updates, intent fulfillments, errors)
+- ✅ Maintains consistent state across chains (monitors both Sepolia and Base Sepolia)
+- ✅ Batches updates for gas efficiency
+- ✅ Uses low gas prices for non-urgent transactions
 
 **What Agent Sees**:
 
-- 🔍 All on-chain LP positions
-- 📡 Real-time pool price data
+- 🔍 All on-chain LP positions (6+ Uniswap v4 reads per user)
+- 📡 Real-time pool price data via `IPoolManager`
 - 🎯 Position ranges (tickLower, tickUpper)
 - 📊 Current tick in pool
-- 📝 Event logs from contracts
+- 📝 Event logs (PetHatched, IntentCreated, etc.)
 - ⏰ Block timestamps
+- 🌉 Cross-chain travel intents
 
-**What Agent Cannot Do**:
+**What Agent CAN Do**:
 
-- ❌ Move user funds
-- ❌ Create/close positions on behalf of user
+- ✅ Update health metadata (read-only impact on funds)
+- ✅ Create LP positions on behalf of users (via intents)
+- ✅ Bridge assets using Li.FI for intent fulfillment
+- ✅ Claim payments from The Compact
+
+**What Agent CANNOT Do**:
+
+- ❌ Move user funds directly (only via signed intents)
+- ❌ Close user positions without permission
 - ❌ Change game rules arbitrarily
 - ❌ Access user's private keys
 - ❌ Make non-deterministic decisions
@@ -509,63 +529,125 @@ contracts/
     └── IAllocator.sol          // Allocator interface
 ```
 
-### Agent Service
+### Agent Service (Unified)
 
 ```
 agent/
-├── index.ts                   // Main agent entry point
-├── monitor.ts                 // Event monitoring
-├── healthCalculator.ts        // Deterministic health logic
-├── updateService.ts           // Submit health updates to chain
-├── solver.ts                  // Fulfill travel intents (The Compact + Li.FI)
-├── lifiService.ts             // Li.FI SDK wrapper
-└── config.ts                  // Chain configs, RPC endpoints, solver wallet, Li.FI API key
+├── index.ts                   // Main agent entry point (runs both loops)
+├── config.ts                  // Chain configs, RPC endpoints, agent wallet, Li.FI API key
+├── health/
+│   ├── monitor.ts             // Health monitoring loop
+│   ├── calculator.ts          // Deterministic health formula
+│   └── updater.ts             // Submit health txs to PetRegistry
+├── solver/
+│   ├── listener.ts            // Intent event listener
+│   ├── profitability.ts       // Profitability evaluation
+│   ├── fulfiller.ts           // Intent fulfillment logic
+│   └── lifi.ts                // Li.FI SDK integration
+├── contracts/
+│   ├── poolManager.ts         // IPoolManager interface
+│   ├── positionManager.ts     // IPositionManager interface
+│   ├── petRegistry.ts         // PetRegistry interface
+│   └── autoLpHelper.ts        // AutoLpHelper interface
+└── utils/
+    ├── logger.ts              // Structured logging
+    ├── gas.ts                 // Gas price optimization
+    └── multicall.ts           // Batched RPC calls
 ```
 
-**Health Monitoring Agent**:
+**Unified Agent Responsibilities**:
 
+**1. Health Monitoring (Continuous Loop)**:
 - Watches `PositionCreated`, `PositionModified`, `PositionClosed` events
-- Queries Uniswap v4 position state every 60 seconds
+- Queries Uniswap v4 position state every 60 seconds via `IPoolManager`
 - Calculates health based on in-range vs out-of-range time
-- Calls `PetRegistry.updateHealth()` when health changes
+- Calls `PetRegistry.updateHealth()` when health changes ≥5 points
+- Batches updates for multiple pets (gas optimization)
 - Logs all actions with timestamps for auditability
 
-**Solver Bot** (The Compact + Li.FI):
+**2. Intent Fulfillment (Event-Driven)**:
+- Listens for `IntentCreated` events from `AutoLpHelper`
+- Evaluates profitability: `lockedAssets - (bridgeCost + gasCost)`
+- Uses **Li.FI SDK** to find optimal bridge route
+- Bridges own capital to destination chain
+- Calls `AutoLpHelper.mintLpFromTokens()` to create LP on destination
+- Submits claim via `LPMigrationArbiter.verifyAndClaim()`
+- Receives payment from The Compact on source chain
+
+**Main Agent Workflow**:
 
 ```typescript
-// Main solver workflow
-async function fulfillIntent(intent: TravelIntent) {
-  // 1. Evaluate profitability
-  const cost = await estimateCosts(intent);
-  const revenue = intent.lockedUSDC + intent.lockedUSDT;
-  if (revenue < cost) return; // Not profitable
+// Unified agent entry point
+async function runAgent() {
+  console.log('🤖 Xolotrain Agent Starting...');
+  
+  // Run both responsibilities concurrently
+  await Promise.all([
+    healthMonitoringLoop(),
+    intentFulfillmentLoop()
+  ]);
+}
 
-  // 2. Use Li.FI SDK to find optimal route
-  const routes = await lifi.getRoutes({
-    fromChainId: intent.sourceChainId,
-    toChainId: intent.destinationChainId,
-    fromTokenAddress: USDC_ADDRESS,
-    toTokenAddress: USDC_ADDRESS,
-    fromAmount: intent.usdcAmount,
+// Health monitoring loop
+async function healthMonitoringLoop() {
+  while (true) {
+    const pets = await petRegistry.getAllActivePets();
+    const updates = [];
+    
+    for (const pet of pets) {
+      const { tick } = await poolManager.getSlot0(pet.poolKey);
+      const position = await positionManager.getPosition(pet.positionId);
+      const newHealth = calculateHealth(tick, position.tickLower, position.tickUpper);
+      
+      if (Math.abs(newHealth - pet.health) >= 5) {
+        updates.push({ petId: pet.id, health: newHealth });
+      }
+    }
+    
+    if (updates.length > 0) {
+      await petRegistry.batchUpdateHealth(updates);
+      console.log(`✅ Updated ${updates.length} pets`);
+    }
+    
+    await sleep(60_000); // 60 seconds
+  }
+}
+
+// Intent fulfillment loop
+async function intentFulfillmentLoop() {
+  autoLpHelper.on('IntentCreated', async (event) => {
+    const { compactId, usdcAmount, usdtAmount } = event.args;
+    
+    // 1. Evaluate profitability
+    const cost = await estimateCosts(event);
+    const revenue = usdcAmount + usdtAmount;
+    if (revenue < cost) return;
+    
+    // 2. Find optimal bridge route via Li.FI
+    const routes = await lifi.getRoutes({
+      fromChainId: sourceChainId,
+      toChainId: destinationChainId,
+      fromTokenAddress: USDC,
+      fromAmount: usdcAmount,
+    });
+    
+    // 3. Bridge assets
+    await lifi.executeRoute(routes[0]);
+    await waitForBridgeCompletion(routes[0].id);
+    
+    // 4. Create LP on destination (Uniswap v4 interaction)
+    const tx = await autoLpHelper.mintLpFromTokens(
+      usdcAmount,
+      usdtAmount,
+      event.args.userAddress
+    );
+    const positionId = tx.events.LPCreated.args.positionId;
+    
+    // 5. Submit claim
+    await arbiter.verifyAndClaim(positionId, compactId, AGENT_ADDRESS);
+    
+    console.log(`✅ Intent ${compactId} fulfilled`);
   });
-
-  // 3. Execute bridge via Li.FI Composer
-  const bridgeTx = await lifi.executeRoute(routes[0]);
-  await waitForBridgeCompletion(bridgeTx);
-  // Now solver has USDC and USDT on destination chain
-
-  // 4. Mint LP position from bridged tokens
-  const lpTx = await autoLpHelper.mintLpFromTokens(
-    intent.usdcAmount,
-    intent.usdtAmount,
-    intent.userAddress, // Position created on behalf of user
-  );
-
-  // 5. Submit claim to arbiter
-  const positionId = lpTx.events.PositionCreated.positionId;
-  await arbiter.verifyAndClaim(positionId, intent.compactId, SOLVER_ADDRESS);
-
-  // 6. Receive payment on source chain (locked USDC + USDT)
 }
 ```
 
