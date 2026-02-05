@@ -1,9 +1,24 @@
+import { Della_Respira, Federo } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import "@scaffold-ui/components/styles.css";
 import { ScaffoldEthAppWithProviders } from "~~/components/ScaffoldEthAppWithProviders";
 import { ThemeProvider } from "~~/components/ThemeProvider";
 import "~~/styles/globals.css";
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
+
+const fede = Federo({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-fede",
+  display: "swap",
+});
+
+const della = Della_Respira({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-della",
+  display: "swap",
+});
 
 export const metadata = getMetadata({
   title: "Scaffold-ETH 2 App",
@@ -12,7 +27,7 @@ export const metadata = getMetadata({
 
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html suppressHydrationWarning className={``}>
+    <html suppressHydrationWarning className={`${fede.variable} ${della.variable}`}>
       <body>
         <ThemeProvider enableSystem>
           <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
