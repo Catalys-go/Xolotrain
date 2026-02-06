@@ -78,11 +78,11 @@ Ensure `addresses/poolKeys.json` has correct addresses for your chain:
 
 ### Step 1: Mine Hook Address Manually (Optional)
 
-If you want to mine the hook address separately:
+If you want to mine the hook address separately (need an existing contract address for PetRegistry):
 
 ```bash
 # Parameters: <poolManager> <petRegistry> <chainId>
-# Note: Use any address for petRegistry initially (e.g., your deployer)
+# Note: You should have an existing PetRegistry cotract address to use as the second parameter and paste in for script usage
 forge script script/MineHookAddress.s.sol \
   --sig "run(address,address,uint256)" \
   0x000000000004444c5dc75cB358380D2e3dE08A90 \
