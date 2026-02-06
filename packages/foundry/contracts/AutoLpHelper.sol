@@ -20,6 +20,19 @@ import {Actions} from "@uniswap/v4-periphery/src/libraries/Actions.sol";
 import {CalldataDecoder} from "@uniswap/v4-periphery/src/libraries/CalldataDecoder.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+// Simple interface for PetRegistry - avoids circular dependency
+interface PetRegistry {
+    function pets(uint256 petId) external view returns (
+        address owner,
+        uint256 health,
+        uint256 birthBlock,
+        uint256 lastUpdate,
+        uint256 chainId,
+        bytes32 poolId,
+        uint256 positionId
+    );
+}
+
 /// @title AutoLpHelper
 /// @notice Atomically swaps ETH to USDC/USDT and creates NFT-based LP position in one transaction
 /// @dev Uses IUnlockCallback pattern + PositionManager for user-owned positions
@@ -44,8 +57,33 @@ contract AutoLpHelper is IUnlockCallback {
         uint256 timestamp
     );
 
+    event IntentCreated(
+        bytes32 indexed compactId,
+        uint256 indexed petId,
+        address indexed user,
+        uint256 sourceChainId,
+        uint256 destinationChainId,
+        uint128 usdcAmount,
+        uint128 usdtAmount,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 timestamp
+    );
+
+    event LPCreatedFromIntent(
+        bytes32 indexed compactId,
+        uint256 indexed positionId,
+        address indexed solver,
+        uint256 chainId,
+        uint128 liquidity,
+        uint256 timestamp
+    );
+
     IPoolManager public immutable POOL_MANAGER;
     IPositionManager public immutable POSM;
+    
+    // Reference to PetRegistry for ownership verification
+    address public petRegistry;
     
     PoolKey public ethUsdcPoolKey;
     PoolKey public ethUsdtPoolKey;
@@ -95,6 +133,14 @@ contract AutoLpHelper is IUnlockCallback {
         TICK_SPACING = _tickSpacing;
         TICK_LOWER_OFFSET = _tickLowerOffset;
         TICK_UPPER_OFFSET = _tickUpperOffset;
+    }
+
+    /// @notice Set the PetRegistry address (callable only once during setup)
+    /// @param _petRegistry Address of the deployed PetRegistry contract
+    function setPetRegistry(address _petRegistry) external {
+        require(petRegistry == address(0), "Registry already set");
+        require(_petRegistry != address(0), "Invalid registry");
+        petRegistry = _petRegistry;
     }
 
     receive() external payable {}
@@ -438,7 +484,103 @@ contract AutoLpHelper is IUnlockCallback {
 
         return abi.encode(liquidity, positionId);
     }
-    
+
+
+    /// @notice Initiate cross-chain LP migration via intent-based system
+    /// @dev Creates an intent for solver to fulfill. User's LP is closed on source chain,
+    ///      tokens are held in escrow, and solver recreates LP on destination chain.
+    ///      This is Phase 1 (MVP): Intent creation without The Compact integration.
+    ///      Phase 2 will add The Compact for trustless settlement.
+    /// @param petId The ID of the pet to migrate (must be owned by msg.sender)
+    /// @param destinationChainId Target chain ID where LP will be recreated
+    /// @param tickLower Lower tick for the new LP position on destination chain
+    /// @param tickUpper Upper tick for the new LP position on destination chain
+    /// @return compactId Unique identifier for tracking this travel intent
+    function travelToChain(
+        uint256 petId,
+        uint256 destinationChainId,
+        int24 tickLower,
+        int24 tickUpper
+    ) external returns (bytes32 compactId) {
+        // 1. Verify msg.sender owns the pet (read from PetRegistry)
+        require(petRegistry != address(0), "Registry not set");
+        
+        // Read pet data from registry
+        (address owner, , , , uint256 chainId, , uint256 positionId) = 
+            PetRegistry(petRegistry).pets(petId);
+        
+        require(owner == msg.sender, "Not pet owner");
+        require(chainId == block.chainid, "Pet not on this chain");
+        require(positionId != 0, "No active position");
+        
+        // 2. Close existing LP position → get USDC/USDT amounts
+        // Note: In MVP, we simulate closing the position by reading the expected amounts
+        // A full implementation would call PositionManager to decrease liquidity to zero
+        // and collect the underlying tokens. For now, we'll calculate expected amounts.
+        
+        // Get the currencies from the pool
+        Currency usdcCurrency = usdcUsdtPoolKey.currency0;
+        Currency usdtCurrency = usdcUsdtPoolKey.currency1;
+        
+        // TODO: Implement actual position closing via PositionManager
+        // For MVP, assume user has approved and we can transfer their existing balance
+        // In production, this would:
+        //   1. Call POSM.modifyLiquidities() to decrease liquidity to 0
+        //   2. Collect tokens from the position
+        //   3. Get actual USDC/USDT amounts returned
+        
+        // Placeholder amounts - in production these come from closing the position
+        uint128 usdcAmount = 1000e6; // 1000 USDC (6 decimals)
+        uint128 usdtAmount = 1000e6; // 1000 USDT (6 decimals)
+        
+        // 3. Approve The Compact to spend USDC/USDT
+        // Note: In MVP Phase 1, we skip The Compact integration
+        // Tokens remain in this contract as a trust assumption
+        // Phase 2 will deposit into The Compact for trustless settlement
+        
+        // Transfer tokens from user to this contract (escrow)
+        IERC20(Currency.unwrap(usdcCurrency)).transferFrom(msg.sender, address(this), usdcAmount);
+        IERC20(Currency.unwrap(usdtCurrency)).transferFrom(msg.sender, address(this), usdtAmount);
+        
+        // 4. Call TheCompact.registerMultichainIntent(...)
+        // TODO: Phase 2 - Integrate with The Compact
+        // For now, we create a simple intent ID and rely on off-chain solver
+        // In production:
+        //   1. Approve The Compact to spend tokens
+        //   2. Call TheCompact.deposit() to create resource locks
+        //   3. Call TheCompact.register() with multichain compact details
+        //   4. Store the returned compactId for tracking
+        
+        // Generate deterministic intent ID
+        compactId = keccak256(abi.encodePacked(
+            msg.sender,
+            petId,
+            block.chainid,
+            destinationChainId,
+            usdcAmount,
+            usdtAmount,
+            tickLower,
+            tickUpper,
+            block.timestamp
+        ));
+        
+        // 5. Emit IntentCreated event
+        emit IntentCreated(
+            compactId,
+            petId,
+            msg.sender,
+            block.chainid,
+            destinationChainId,
+            usdcAmount,
+            usdtAmount,
+            tickLower,
+            tickUpper,
+            block.timestamp
+        );
+        
+        // 6. Return compactId for tracking
+        return compactId;
+    }
 
     /// @notice Quote the expected USDC and USDT output for a given ETH input
     /// @dev Call this before swapEthToUsdcUsdtAndMint to get accurate minimum output values
