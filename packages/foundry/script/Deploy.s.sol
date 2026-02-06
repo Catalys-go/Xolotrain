@@ -55,11 +55,15 @@ contract DeployScript is ScaffoldETHDeploy {
         // 3) Deploy EggHatchHook (deterministic via CREATE2)
         // Note: poolId is now computed dynamically from PoolKey in the hook
         bytes32 hookSalt = 0x00000000000000000000000000000000000000000000000000000000000002d8;
+        /* UDATE HOOK  */
         EggHatchHook eggHatchHook = new EggHatchHook{salt: hookSalt}(address(poolManager), address(petRegistry));
         deployments.push(Deployment({name: "EggHatchHook", addr: address(eggHatchHook)}));
-        petRegistry.setHook(address(eggHatchHook));
 
-        // 4) Initialize USDC_USDT pool at 1:1 price (tick 0)
+        // 4) Set contract addresses after deployments
+        petRegistry.setHook(address(eggHatchHook));
+        autoLpHelper.setPetRegistry(address(petRegistry));
+
+        // 5) Initialize USDC_USDT pool at 1:1 price (tick 0)
         uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
         try IPoolManager(poolManager).initialize(usdcUsdt, sqrtPriceX96) {
             console.logString("USDC_USDT pool initialized successfully at 1:1 price");

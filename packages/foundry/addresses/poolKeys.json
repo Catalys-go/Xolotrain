@@ -53,7 +53,7 @@
       "token1": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       "fee": 10,
       "tickSpacing": 1,
-      "hooks": "0x33E0799e791D3057D20eeD1dFb5db2F21D160400",
+      "hooks": "0xEa0C0Cf8B9523E0f73dbe676AD5Be79146f28400",
       "poolId": "0x50114ea1a600546fcd02211454a6e8480467d651fc2bdc7f093056c4c5ecf4de"
     }
   },
