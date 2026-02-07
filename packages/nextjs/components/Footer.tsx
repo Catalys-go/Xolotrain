@@ -1,79 +1,94 @@
-import React from "react";
-import Link from "next/link";
-import { useFetchNativeCurrencyPrice } from "@scaffold-ui/hooks";
+"use client";
+
+import React, { useMemo, useState } from "react";
 import { hardhat } from "viem/chains";
-import { CurrencyDollarIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import { HeartIcon } from "@heroicons/react/24/outline";
+import { useAccount } from "wagmi";
+import { ChevronUpIcon } from "@heroicons/react/24/outline";
 import { SwitchTheme } from "~~/components/SwitchTheme";
-import { BuidlGuidlLogo } from "~~/components/assets/BuidlGuidlLogo";
 import { Faucet } from "~~/components/scaffold-eth";
 import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
 
 /**
- * Site footer
+ * Footer: LP bottom sheet.
+ * - Hidden on LOCKED screen.
+ * - On UNLOCKED screen, shows a collapsed "Axo LP" tab.
+ * - Expands upward to reveal LP details (wire to on-chain reads next).
  */
 export const Footer = () => {
+  const { isConnected } = useAccount();
   const { targetNetwork } = useTargetNetwork();
   const isLocalNetwork = targetNetwork.id === hardhat.id;
-  const { price: nativeCurrencyPrice } = useFetchNativeCurrencyPrice();
+
+  // Per docs: LP details depend on PetRegistry + PoolManager position reads.
+  // For now, we display a coherent placeholder panel.
+  const [open, setOpen] = useState(false);
+
+  const sheetClass = useMemo(() => {
+    // leave a tab visible when closed
+    return open ? "translate-y-0" : "translate-y-[calc(100%-64px)]";
+  }, [open]);
+
+  if (!isConnected) return null;
 
   return (
-    <div className="min-h-0 py-5 px-1 mb-11 lg:mb-0">
-      <div>
-        <div className="fixed flex justify-between items-center w-full z-10 p-4 bottom-0 left-0 pointer-events-none">
-          <div className="flex flex-col md:flex-row gap-2 pointer-events-auto">
-            {nativeCurrencyPrice > 0 && (
-              <div>
-                <div className="btn btn-primary btn-sm font-normal gap-1 cursor-auto">
-                  <CurrencyDollarIcon className="h-4 w-4" />
-                  <span>{nativeCurrencyPrice.toFixed(2)}</span>
-                </div>
+    <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
+      <div
+        className={
+          "pointer-events-auto mx-auto max-w-3xl px-4 transition-transform duration-300 ease-out " + sheetClass
+        }
+      >
+        <div className="bg-base-100 rounded-t-3xl shadow-2xl shadow-secondary/30 border border-base-200">
+          {/* Tab */}
+          <button
+            type="button"
+            onClick={() => setOpen(v => !v)}
+            className="w-full flex items-center justify-center gap-2 py-4"
+            aria-expanded={open}
+            aria-controls="lp-bottom-sheet"
+          >
+            <span className="font-della text-base-content">Axo LP</span>
+            <ChevronUpIcon className={"h-5 w-5 transition-transform " + (open ? "rotate-180" : "rotate-0")} />
+          </button>
+
+          {/* Content */}
+          <div id="lp-bottom-sheet" className="px-5 pb-6">
+            <div className="flex items-center justify-between gap-4 pb-4">
+              <div className="text-sm text-base-content/70">
+                LP position details (Uniswap v4 USDC/USDT) — expands from bottom per main-screen spec.
               </div>
-            )}
-            {isLocalNetwork && (
-              <>
-                <Faucet />
-                <Link href="/blockexplorer" passHref className="btn btn-primary btn-sm font-normal gap-1">
-                  <MagnifyingGlassIcon className="h-4 w-4" />
-                  <span>Block Explorer</span>
-                </Link>
-              </>
-            )}
+              <div className="flex items-center gap-2">
+                {isLocalNetwork && <Faucet />}
+                <SwitchTheme className="" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="bg-base-200 rounded-2xl p-4">
+                <div className="text-xs text-base-content/60">Status</div>
+                <div className="mt-1 text-sm text-base-content">—</div>
+                <div className="mt-3 text-xs text-base-content/60">In range</div>
+                <div className="mt-1 text-sm text-base-content">—</div>
+              </div>
+              <div className="bg-base-200 rounded-2xl p-4">
+                <div className="text-xs text-base-content/60">Liquidity</div>
+                <div className="mt-1 text-sm text-base-content">—</div>
+                <div className="mt-3 text-xs text-base-content/60">Fees earned</div>
+                <div className="mt-1 text-sm text-base-content">—</div>
+              </div>
+              <div className="bg-base-200 rounded-2xl p-4">
+                <div className="text-xs text-base-content/60">Range</div>
+                <div className="mt-1 text-sm text-base-content">—</div>
+                <div className="mt-3 text-xs text-base-content/60">Pet health</div>
+                <div className="mt-1 text-sm text-base-content">—</div>
+              </div>
+            </div>
+
+            <div className="mt-5 text-xs text-base-content/60">
+              Next wiring step: read PetRegistry.getPetsByOwner(address) → positionId → PoolManager position state;
+              compute health deterministically as described in INTERACTIONS.md / SYSTEM_ARCHITECTURE.md.
+            </div>
           </div>
-          <SwitchTheme className={`pointer-events-auto ${isLocalNetwork ? "self-end md:self-auto" : ""}`} />
         </div>
-      </div>
-      <div className="w-full">
-        <ul className="menu menu-horizontal w-full">
-          <div className="flex justify-center items-center gap-2 text-sm w-full">
-            <div className="text-center">
-              <a href="https://github.com/scaffold-eth/se-2" target="_blank" rel="noreferrer" className="link">
-                Fork me
-              </a>
-            </div>
-            <span>·</span>
-            <div className="flex justify-center items-center gap-2">
-              <p className="m-0 text-center">
-                Built with <HeartIcon className="inline-block h-4 w-4" /> at
-              </p>
-              <a
-                className="flex justify-center items-center gap-1"
-                href="https://buidlguidl.com/"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <BuidlGuidlLogo className="w-3 h-5 pb-1" />
-                <span className="link">BuidlGuidl</span>
-              </a>
-            </div>
-            <span>·</span>
-            <div className="text-center">
-              <a href="https://t.me/joinchat/KByvmRe5wkR-8F_zz6AjpA" target="_blank" rel="noreferrer" className="link">
-                Support
-              </a>
-            </div>
-          </div>
-        </ul>
       </div>
     </div>
   );
