@@ -1,0 +1,33 @@
+{
+  "name": "@xolotrain/agent",
+  "version": "1.0.0",
+  "description": "Xolotrain Health Monitoring Agent - Autonomous Uniswap v4 LP position tracker",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "viem": "^2.7.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "uniswap",
+    "v4",
+    "agent",
+    "health-monitoring",
+    "ethereum"
+  ],
+  "author": "Xolotrain Team",
+  "license": "MIT"
+}

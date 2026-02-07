@@ -9,14 +9,18 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import {EggHatchHook} from "../contracts/EggHatchHook.sol";
 
 /**
  * @title MineHookAddress
- * @notice Mines a valid CREATE2 salt for EggHatchHook deployment AND computes new poolIds
- * @dev Uniswap v4 hooks must have specific permission bits set in their address
- *      This script brute forces salts until finding one that produces a valid address,
- *      then computes the new poolIds for all pools that will use this hook
+ * @notice Mines a valid CREATE2 salt for EggHatchHook deployment using Uniswap's official HookMiner
+ * @dev Follows Uniswap v4 best practices: https://docs.uniswap.org/contracts/v4/guides/hooks/hook-deployment
+ * 
+ * CREATE2_DEPLOYER:
+ *   - In forge test: Use test contract address(this) or the pranking address
+ *   - In forge script: Use 0x4e59b44847b379578588920cA78FbF26c0B4956C (CREATE2 Deployer Proxy)
+ *   - Alternative: Could use scaffold-eth deployer account (msg.sender during broadcast)
  * 
  * Usage:
  *   forge script script/MineHookAddress.s.sol --sig "run(address,address,uint256)" <poolManager> <petRegistry> <chainId>
@@ -24,59 +28,45 @@ import {EggHatchHook} from "../contracts/EggHatchHook.sol";
  * Example:
  *   forge script script/MineHookAddress.s.sol --sig "run(address,address,uint256)" \
  *     0x000000000004444c5dc75cB358380D2e3dE08A90 \
- *     0xb288315b51e6fac212513e1a7c70232fa584bbb9 \
+ *     0xB288315B51e6FAc212513E1a7C70232fa584Bbb9 \
  *     31337
  */
 contract MineHookAddress is Script {
     using PoolIdLibrary for PoolKey;
-    // Permission flags we need for EggHatchHook
-    // We only use afterAddLiquidity, so we need that bit set
-    uint160 constant FLAGS = uint160(Hooks.AFTER_ADD_LIQUIDITY_FLAG);
     
-    // Mask to extract the lower 14 bits (permission bits)
-    uint160 constant FLAG_MASK = 0x3FFF; // 0b11111111111111
-    
-    // CREATE2 Deployer Proxy used by Foundry scripts
+    // CREATE2 Deployer Address - from "forge script" default deployer (0x4e59b44847b379578588920cA78FbF26c0B4956C)
+    /* This is the address that will deploy the hook contract - add address you control for deployment on real chains */
     address constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
-    
-    // Maximum iterations to prevent infinite loops
-    uint256 constant MAX_ITERATIONS = 100_000;
 
-    function run(address poolManager, address petRegistry, uint256 chainId) external {
-        run(poolManager, petRegistry, chainId, address(0));
-    }
 
-    function run(address poolManager, address petRegistry, uint256 chainId, address specifiedDeployer) public {
+    function run(address poolManager, address petRegistry, uint256 chainId) external view {
         console.log("===========================================");
         console.log("Mining Hook Address for EggHatchHook");
         console.log("===========================================");
         console.log("Pool Manager:", poolManager);
         console.log("Pet Registry:", petRegistry);
         console.log("Chain ID:", chainId);
-        console.log("Required Flags:", FLAGS);
         console.log("");
         console.log("Mining... this may take a minute...");
         console.log("");
 
-        bytes memory creationCode = type(EggHatchHook).creationCode;
+        // Hook contracts must have specific flags encoded in the address
+        uint160 flags = uint160(Hooks.AFTER_ADD_LIQUIDITY_FLAG);
+        
+        // Mine a salt that will produce a hook address with the correct flags
         bytes memory constructorArgs = abi.encode(poolManager, petRegistry);
-        bytes memory bytecode = abi.encodePacked(creationCode, constructorArgs);
         
-        // Always use CREATE2_DEPLOYER (Foundry's CREATE2 proxy)
-        console.log("Using CREATE2 Deployer:", CREATE2_DEPLOYER);
-        
-        (address hookAddress, bytes32 salt) = mineSalt(CREATE2_DEPLOYER, bytecode);
+        (address hookAddress, bytes32 salt) = HookMiner.find(
+            CREATE2_DEPLOYER,
+            flags,
+            type(EggHatchHook).creationCode,
+            constructorArgs
+        );
         
         console.log("===========================================");
-        console.log("SUCCESS! Valid hook address found:");
-        console.log("===========================================");
+        console.log("SUCCESS:");
         console.log("Hook Address:", hookAddress);
-        console.log("Salt:", vm.toString(salt));
-        console.log("");
-        console.log("Verification:");
-        console.log("Address & FLAG_MASK:", uint160(hookAddress) & FLAG_MASK);
-        console.log("Expected FLAGS:", FLAGS);
-        console.log("Match:", (uint160(hookAddress) & FLAG_MASK) == (FLAGS & FLAG_MASK));
+        console.log("Salt:", uint256(salt));
         console.log("");
         
         // Compute new poolId for USDC_USDT (the only pool that uses our hook)
@@ -127,43 +117,5 @@ contract MineHookAddress is Script {
         console.log("3. Redeploy contracts with: yarn deploy --reset");
         console.log("===========================================");
     }
-
-    function mineSalt(address deployer, bytes memory bytecode) internal pure returns (address, bytes32) {
-        bytes32 bytecodeHash = keccak256(bytecode);
-        
-        for (uint256 i = 0; i < MAX_ITERATIONS; i++) {
-            bytes32 salt = bytes32(i);
-            
-            // Compute CREATE2 address
-            address predictedAddress = computeCreate2Address(deployer, salt, bytecodeHash);
-            
-            // Check if address has correct permission bits
-            if ((uint160(predictedAddress) & FLAG_MASK) == (FLAGS & FLAG_MASK)) {
-                return (predictedAddress, salt);
-            }
-            
-            // Log progress every 10k iterations
-            if (i % 10000 == 0 && i > 0) {
-                console.log("Checked", i, "salts...");
-            }
-        }
-        
-        revert("Failed to find valid salt within MAX_ITERATIONS");
-    }
-
-    function computeCreate2Address(
-        address deployer,
-        bytes32 salt,
-        bytes32 bytecodeHash
-    ) internal pure returns (address) {
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                bytes1(0xff),
-                deployer,
-                salt,
-                bytecodeHash
-            )
-        );
-        return address(uint160(uint256(hash)));
-    }
 }
+

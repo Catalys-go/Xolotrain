@@ -24,10 +24,11 @@ contract PetRegistry is Ownable {
     error NotOwner(address caller);
     error InvalidHealth(uint256 health);
     error PetAlreadyExists(address owner, uint256 existingPetId);
+    error PetOwnerMismatch(uint256 petId, address expected, address actual);
 
     address public hook;
     address public agent; // off-chain agent updater
-    uint256 public nextId;
+    uint256 private _totalSupply; // Track total number of unique pets minted
     mapping(uint256 => Pet) public pets;
     mapping(address => uint256[]) private ownerPets; // Track pets by owner
     mapping(address => uint256) public activePetId; // One active pet per user
@@ -55,48 +56,114 @@ contract PetRegistry is Ownable {
         // Owner set via Ownable constructor
     }
 
+    /// @notice Derive deterministic pet ID from owner address
+    /// @dev Each user gets exactly one pet ID across all chains - prevents collisions
+    /// @dev Uses uint48 (6 bytes) for UI-friendly IDs (~12-13 digits)
+    /// @dev WARNING: Collision risk becomes significant above ~16.7 million users
+    /// @dev If user base exceeds 10M, consider upgrading to uint64 or uint96
+    /// @param owner The owner address
+    /// @return petId Deterministic pet ID (same across all chains for this owner)
+    function _derivePetId(address owner) internal pure returns (uint256) {
+        return uint256(uint48(bytes6(keccak256(abi.encodePacked(
+            "XolotrainPet",
+            owner
+        )))));
+    }
+
+    /// @notice Called by EggHatchHook when user adds liquidity
+    /// @dev Handles both initial hatch and cross-chain migration
+    /// @param owner Address of the LP position owner
+    /// @param petId 0 for auto-derive (initial hatch), or explicit ID for migration
+    /// @param chainId Current chain ID where LP was created
+    /// @param poolId Uniswap v4 pool identifier
+    /// @param positionId Unique LP position identifier
+    /// @return petId The pet ID (derived or provided)
     function hatchFromHook(
         address owner,
+        uint256 petId,
         uint256 chainId,
         bytes32 poolId,
         uint256 positionId
-    ) external returns (uint256 petId) {
+    ) external returns (uint256) {
         if (msg.sender != hook) revert NotHook(msg.sender);
         if (owner == address(0)) revert InvalidOwner();
 
-        // Check if user already has an active pet
-        uint256 existingPetId = activePetId[owner];
-        
-        if (existingPetId != 0) {
-            // User already has a pet - this is a migration or new position
-            // Update existing pet instead of creating duplicate
-            Pet storage existingPet = pets[existingPetId];
-            uint256 oldChainId = existingPet.chainId;
+        // Case 1: petId == 0 → Auto-derive from owner (initial hatch or local migration)
+        if (petId == 0) {
+            uint256 existingPetId = activePetId[owner];
             
-            existingPet.chainId = chainId;
-            existingPet.poolId = poolId;
-            existingPet.positionId = positionId;
-            existingPet.lastUpdate = block.timestamp;
-            
-            emit PetMigrated(existingPetId, owner, oldChainId, chainId, poolId, positionId);
-            return existingPetId;
-        }
+            if (existingPetId != 0) {
+                // User already has a pet on this chain - update it (local re-position)
+                Pet storage repositionPet = pets[existingPetId];
+                uint256 prevChainId = repositionPet.chainId;
+                
+                repositionPet.chainId = chainId;
+                repositionPet.poolId = poolId;
+                repositionPet.positionId = positionId;
+                repositionPet.lastUpdate = block.timestamp;
+                
+                emit PetMigrated(existingPetId, owner, prevChainId, chainId, poolId, positionId);
+                return existingPetId;
+            }
 
-        // First pet for this user - mint new one
-        petId = ++nextId;
-        pets[petId] = Pet({
-            owner: owner,
-            health: 100,
-            birthBlock: block.number,
-            lastUpdate: block.timestamp,
-            chainId: chainId,
-            poolId: poolId,
-            positionId: positionId
-        });
-        ownerPets[owner].push(petId);
-        activePetId[owner] = petId; // Mark as active pet
+            // First pet for this user - derive deterministic ID
+            petId = _derivePetId(owner);
+            
+            pets[petId] = Pet({
+                owner: owner,
+                health: 100,
+                birthBlock: block.number,
+                lastUpdate: block.timestamp,
+                chainId: chainId,
+                poolId: poolId,
+                positionId: positionId
+            });
+            ownerPets[owner].push(petId);
+            activePetId[owner] = petId;
+            _totalSupply++; // Increment total supply for new pet
+            
+            emit PetHatchedFromLp(petId, owner, chainId, poolId, positionId);
+            return petId;
+        }
         
-        emit PetHatchedFromLp(petId, owner, chainId, poolId, positionId);
+        // Case 2: petId > 0 → Explicit cross-chain migration
+        Pet storage existingPet = pets[petId];
+        
+        if (existingPet.owner == address(0)) {
+            // Pet doesn't exist on this chain yet - create it
+            pets[petId] = Pet({
+                owner: owner,
+                health: 100, // Start fresh or could be passed via hookData
+                birthBlock: block.number,
+                lastUpdate: block.timestamp,
+                chainId: chainId,
+                poolId: poolId,
+                positionId: positionId
+            });
+            ownerPets[owner].push(petId);
+            activePetId[owner] = petId;
+            _totalSupply++; // Increment total supply for new pet on this chain
+            
+            emit PetMigrated(petId, owner, 0, chainId, poolId, positionId);
+            return petId;
+        }
+        
+        if (existingPet.owner != owner) {
+            // Collision! Different owner already has this petId
+            // This should never happen with owner-derived IDs
+            revert PetOwnerMismatch(petId, owner, existingPet.owner);
+        }
+        
+        // Same owner - update existing pet (re-migration to same chain)
+        uint256 oldChainId = existingPet.chainId;
+        existingPet.chainId = chainId;
+        existingPet.poolId = poolId;
+        existingPet.positionId = positionId;
+        existingPet.lastUpdate = block.timestamp;
+        activePetId[owner] = petId; // Update active pointer
+        
+        emit PetMigrated(petId, owner, oldChainId, chainId, poolId, positionId);
+        return petId;
     }
 
     function updateHealth(uint256 petId, uint256 health, uint256 chainId) external {
@@ -161,7 +228,7 @@ contract PetRegistry is Ownable {
     /// @notice Get total number of pets minted
     /// @return Total supply
     function totalSupply() external view returns (uint256) {
-        return nextId;
+        return _totalSupply;
     }
 
     /// @notice Check if a pet exists
