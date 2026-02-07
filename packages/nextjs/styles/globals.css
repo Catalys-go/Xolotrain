@@ -131,3 +131,21 @@
     font-family: var(--font-della);
   }
 }
+
+@keyframes egg-float {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-12px) scale(1.02);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-egg-float {
+  animation: egg-float 2s ease-in-out infinite;
+  transform-origin: 50% 80%;
+  will-change: transform;
+}

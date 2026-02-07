@@ -37,12 +37,17 @@ const Home: NextPage = () => {
           <div className="flex flex-col items-center justify-center gap-6">
             {/* Placeholder main visual (swap with Axolotl component once wired) */}
             <div className="w-full flex items-center justify-center">
-              <div className="w-64 h-64 rounded-3xl bg-base-200 flex items-center justify-center">
-                <span className="text-base-content/60 font-della">Axolotl</span>
-              </div>
+              <Image
+                src="/egg2.svg"
+                alt="Axolotl egg"
+                width={256}
+                height={256}
+                className="rounded-3xl animate-egg-float"
+                priority
+              />
             </div>
 
-            <button className="btn btn-secondary rounded-full px-10">Hatch your Pet</button>
+            <button className="btn btn-neutral hover:btn-accent rounded-full px-10">Hatch your Pet</button>
 
             <p className="text-sm text-base-content/70 text-center">
               Next: Hatch your Axolotl by creating an LP position (AutoLpHelper → EggHatchHook → PetRegistry).
