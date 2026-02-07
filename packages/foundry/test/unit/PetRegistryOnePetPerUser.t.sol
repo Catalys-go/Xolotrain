@@ -21,6 +21,11 @@ contract PetRegistryOnePetPerUserTest is Test {
     bytes32 public poolId1 = bytes32(uint256(0x1111));
     bytes32 public poolId2 = bytes32(uint256(0x2222));
     
+    /// @notice Helper to calculate deterministic pet ID (matches PetRegistry logic)
+    function _derivePetId(address petOwner) internal pure returns (uint256) {
+        return uint256(uint48(bytes6(keccak256(abi.encodePacked("XolotrainPet", petOwner)))));
+    }
+    
     function setUp() public {
         vm.startPrank(owner);
         registry = new PetRegistry(owner);
@@ -33,19 +38,21 @@ contract PetRegistryOnePetPerUserTest is Test {
     function testUserCanOnlyHaveOnePet() public {
         vm.startPrank(hook);
         
-        // User1 creates first position - mints pet #1
-        uint256 petId1 = registry.hatchFromHook(user1, block.chainid, poolId1, 100);
-        assertEq(petId1, 1, "First pet should have ID 1");
+        uint256 expectedPetId = _derivePetId(user1);
         
-        // User1 creates second position - UPDATES pet #1 (not creates pet #2)
-        uint256 petId2 = registry.hatchFromHook(user1, block.chainid, poolId1, 200);
-        assertEq(petId2, 1, "Second call should return SAME pet ID");
+        // User1 creates first position - mints pet with deterministic ID
+        uint256 petId1 = registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
+        assertEq(petId1, expectedPetId, "First pet should have deterministic ID");
+        
+        // User1 creates second position - UPDATES same pet (not creates new)
+        uint256 petId2 = registry.hatchFromHook(user1, 0, block.chainid, poolId1, 200);
+        assertEq(petId2, expectedPetId, "Second call should return SAME pet ID");
         
         // Verify only 1 pet exists
         assertEq(registry.totalSupply(), 1, "User should have exactly 1 pet");
         
         // Verify pet has latest position data
-        PetRegistry.Pet memory pet = registry.getPet(1);
+        PetRegistry.Pet memory pet = registry.getPet(expectedPetId);
         assertEq(pet.positionId, 200, "Pet should track latest position (200)");
         assertEq(pet.owner, user1, "Pet should still belong to user1");
         
@@ -54,21 +61,23 @@ contract PetRegistryOnePetPerUserTest is Test {
 
     function testMultipleUsersCanEachHaveOnePet() public {
         vm.startPrank(hook);
-        
+
+        uint256 expectedPetId = _derivePetId(user1);
+        uint256 expectedUser2PetId = _derivePetId(user2);
         // User1 creates position - pet #1
-        uint256 user1PetId = registry.hatchFromHook(user1, block.chainid, poolId1, 100);
+        uint256 user1PetId = registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
         
         // User2 creates position - pet #2
-        uint256 user2PetId = registry.hatchFromHook(user2, block.chainid, poolId1, 200);
+        uint256 user2PetId = registry.hatchFromHook(user2, 0, block.chainid, poolId1, 200);
         
         // Verify both pets exist
         assertEq(registry.totalSupply(), 2, "Should have 2 pets (one per user)");
-        assertEq(user1PetId, 1, "User1 pet ID");
-        assertEq(user2PetId, 2, "User2 pet ID");
+        assertEq(user1PetId, expectedPetId, "User1 pet ID");
+        assertEq(user2PetId, expectedUser2PetId, "User2 pet ID");
         
         // Verify ownership
-        PetRegistry.Pet memory pet1 = registry.getPet(1);
-        PetRegistry.Pet memory pet2 = registry.getPet(2);
+        PetRegistry.Pet memory pet1 = registry.getPet(expectedPetId);
+        PetRegistry.Pet memory pet2 = registry.getPet(expectedUser2PetId);
         assertEq(pet1.owner, user1);
         assertEq(pet2.owner, user2);
         
@@ -77,11 +86,12 @@ contract PetRegistryOnePetPerUserTest is Test {
 
     function testUserCreatingThreePositionsOnlyHasOnePet() public {
         vm.startPrank(hook);
-        
+
+        uint256 expectedPetId = _derivePetId(user1);
         // User1 creates 3 positions sequentially
-        uint256 petId1 = registry.hatchFromHook(user1, block.chainid, poolId1, 100);
-        uint256 petId2 = registry.hatchFromHook(user1, block.chainid, poolId1, 200);
-        uint256 petId3 = registry.hatchFromHook(user1, block.chainid, poolId1, 300);
+        uint256 petId1 = registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
+        uint256 petId2 = registry.hatchFromHook(user1, 0, block.chainid, poolId1, 200);
+        uint256 petId3 = registry.hatchFromHook(user1, 0, block.chainid, poolId1, 300);
         
         // All should return same pet ID
         assertEq(petId1, petId2, "Second position should return same pet ID");
@@ -91,7 +101,7 @@ contract PetRegistryOnePetPerUserTest is Test {
         assertEq(registry.totalSupply(), 1, "Should have exactly 1 pet");
         
         // Pet should have data from latest position
-        PetRegistry.Pet memory pet = registry.getPet(1);
+        PetRegistry.Pet memory pet = registry.getPet(expectedPetId);
         assertEq(pet.positionId, 300, "Pet should track latest position");
         
         vm.stopPrank();
@@ -101,21 +111,22 @@ contract PetRegistryOnePetPerUserTest is Test {
 
     function testPetPositionDataIsCompletelyReplaced() public {
         vm.startPrank(hook);
-        
+
+        uint256 expectedPetId = _derivePetId(user1);
         // User1 creates first position on pool1, position 100
-        registry.hatchFromHook(user1, 11155111, poolId1, 100); // Sepolia
+        registry.hatchFromHook(user1, 0, 11155111, poolId1, 100); // Sepolia
         
         // Verify initial state
-        PetRegistry.Pet memory petBefore = registry.getPet(1);
+        PetRegistry.Pet memory petBefore = registry.getPet(expectedPetId);
         assertEq(petBefore.chainId, 11155111, "Initial chain: Sepolia");
         assertEq(petBefore.poolId, poolId1, "Initial pool");
         assertEq(petBefore.positionId, 100, "Initial position");
         
         // User1 creates second position on pool2, position 200, different chain
-        registry.hatchFromHook(user1, 84532, poolId2, 200); // Base Sepolia
+        registry.hatchFromHook(user1, 0, 84532, poolId2, 200); // Base Sepolia
         
         // Verify pet data is COMPLETELY replaced
-        PetRegistry.Pet memory petAfter = registry.getPet(1);
+        PetRegistry.Pet memory petAfter = registry.getPet(expectedPetId);
         assertEq(petAfter.chainId, 84532, "Chain should be updated to Base");
         assertEq(petAfter.poolId, poolId2, "Pool should be updated");
         assertEq(petAfter.positionId, 200, "Position should be updated");
@@ -127,16 +138,18 @@ contract PetRegistryOnePetPerUserTest is Test {
 
     function testPetMigrationEventEmittedOnSecondPosition() public {
         vm.startPrank(hook);
+
+        uint256 expectedPetId = _derivePetId(user1);
         
         // First position - emits PetHatchedFromLp
         vm.expectEmit(true, true, false, true);
-        emit PetRegistry.PetHatchedFromLp(1, user1, block.chainid, poolId1, 100);
-        registry.hatchFromHook(user1, block.chainid, poolId1, 100);
+        emit PetRegistry.PetHatchedFromLp(expectedPetId, user1, block.chainid, poolId1, 100);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
         
         // Second position - emits PetMigrated (not PetHatchedFromLp)
         vm.expectEmit(true, true, false, true);
-        emit PetRegistry.PetMigrated(1, user1, block.chainid, block.chainid, poolId2, 200);
-        registry.hatchFromHook(user1, block.chainid, poolId2, 200);
+        emit PetRegistry.PetMigrated(expectedPetId, user1, block.chainid, block.chainid, poolId2, 200);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId2, 200);
         
         vm.stopPrank();
     }
@@ -145,14 +158,14 @@ contract PetRegistryOnePetPerUserTest is Test {
         vm.startPrank(hook);
         
         // User1 creates position
-        uint256 petId = registry.hatchFromHook(user1, block.chainid, poolId1, 100);
+        uint256 petId = registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
         
         // Verify activePetId mapping
         assertEq(registry.activePetId(user1), petId, "Active pet should be set");
         assertEq(registry.activePetId(user2), 0, "User2 should have no active pet");
         
         // User1 creates second position
-        uint256 samePetId = registry.hatchFromHook(user1, block.chainid, poolId1, 200);
+        uint256 samePetId = registry.hatchFromHook(user1, 0, block.chainid, poolId1, 200);
         
         // Verify activePetId still points to same pet
         assertEq(registry.activePetId(user1), samePetId, "Active pet should still be same");
@@ -163,18 +176,20 @@ contract PetRegistryOnePetPerUserTest is Test {
 
     function testOwnerPetsArrayOnlyHasOnePet() public {
         vm.startPrank(hook);
+
+        uint256 expectedPetId = _derivePetId(user1);
         
         // User1 creates multiple positions
-        registry.hatchFromHook(user1, block.chainid, poolId1, 100);
-        registry.hatchFromHook(user1, block.chainid, poolId1, 200);
-        registry.hatchFromHook(user1, block.chainid, poolId1, 300);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 200);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 300);
         
         // Get user's pets
         uint256[] memory userPets = registry.getPetsByOwner(user1);
         
-        // Should only have 1 pet in array
-        assertEq(userPets.length, 1, "User should have exactly 1 pet in array");
-        assertEq(userPets[0], 1, "Pet ID should be 1");
+        // Should have exactly 1 pet in array
+        assertEq(userPets.length, 1, "User should have 1 pet in array");
+        assertEq(userPets[0], expectedPetId, "Pet ID should be deterministic");
         
         vm.stopPrank();
     }
@@ -185,13 +200,13 @@ contract PetRegistryOnePetPerUserTest is Test {
         vm.startPrank(hook);
         
         // User1 creates position on Sepolia
-        uint256 petId = registry.hatchFromHook(user1, 11155111, poolId1, 100);
+        uint256 petId = registry.hatchFromHook(user1, 0, 11155111, poolId1, 100);
         
         PetRegistry.Pet memory petOnSepolia = registry.getPet(petId);
         assertEq(petOnSepolia.chainId, 11155111, "Should be on Sepolia");
         
         // User1 "travels" - creates position on Base
-        uint256 samePetId = registry.hatchFromHook(user1, 84532, poolId2, 200);
+        uint256 samePetId = registry.hatchFromHook(user1, 0, 84532, poolId2, 200);
         
         // Verify same pet, updated chain
         assertEq(petId, samePetId, "Should be same pet");
@@ -206,34 +221,37 @@ contract PetRegistryOnePetPerUserTest is Test {
 
     function testUserCanRecreateExactSamePosition() public {
         vm.startPrank(hook);
-        
+
+        uint256 expectedPetId = _derivePetId(user1);
         // User1 creates position
-        registry.hatchFromHook(user1, block.chainid, poolId1, 100);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
         
         // User1 creates EXACT SAME position again
-        uint256 petId = registry.hatchFromHook(user1, block.chainid, poolId1, 100);
+        uint256 petId = registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
         
         // Should still only have 1 pet
         assertEq(registry.totalSupply(), 1, "Should still have 1 pet");
-        assertEq(petId, 1, "Should be same pet");
+        assertEq(petId, expectedPetId, "Should be same pet");
         
         vm.stopPrank();
     }
 
     function testLastUpdateTimestampChangesOnEachPosition() public {
         vm.startPrank(hook);
+
+        uint256 expectedPetId = _derivePetId(user1);
         
         // First position
-        registry.hatchFromHook(user1, block.chainid, poolId1, 100);
-        PetRegistry.Pet memory pet1 = registry.getPet(1);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
+        PetRegistry.Pet memory pet1 = registry.getPet(expectedPetId);
         uint256 timestamp1 = pet1.lastUpdate;
         
         // Advance time
         vm.warp(block.timestamp + 1000);
         
         // Second position
-        registry.hatchFromHook(user1, block.chainid, poolId1, 200);
-        PetRegistry.Pet memory pet2 = registry.getPet(1);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 200);
+        PetRegistry.Pet memory pet2 = registry.getPet(expectedPetId);
         uint256 timestamp2 = pet2.lastUpdate;
         
         // Verify timestamp updated
@@ -255,29 +273,30 @@ contract PetRegistryOnePetPerUserTest is Test {
      */
     function testHealthImplicationsOfPositionUpdate() public {
         vm.startPrank(hook);
-        
+
+        uint256 expectedPetId = _derivePetId(user1);
         // User1 creates position A (perfect range)
-        registry.hatchFromHook(user1, block.chainid, poolId1, 100);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
         
         // Simulate agent updating health to 95 (good position)
         vm.stopPrank();
         vm.startPrank(owner);
         registry.setAgent(owner);
-        registry.updateHealth(1, 95, block.chainid);
+        registry.updateHealth(expectedPetId, 95, block.chainid);
         vm.stopPrank();
         
         // Verify health
-        PetRegistry.Pet memory pet1 = registry.getPet(1);
+        PetRegistry.Pet memory pet1 = registry.getPet(expectedPetId);
         assertEq(pet1.health, 95, "Health should be 95");
         
         // User1 creates position B (new position, potentially different range)
         vm.startPrank(hook);
-        registry.hatchFromHook(user1, block.chainid, poolId2, 200);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId2, 200);
         vm.stopPrank();
         
         // IMPORTANT: Health does NOT reset to 100 automatically
         // Agent must recalculate health based on new position's range
-        PetRegistry.Pet memory pet2 = registry.getPet(1);
+        PetRegistry.Pet memory pet2 = registry.getPet(expectedPetId);
         assertEq(pet2.health, 95, "Health persists (not reset)");
         assertEq(pet2.positionId, 200, "But position is updated");
         
@@ -290,15 +309,17 @@ contract PetRegistryOnePetPerUserTest is Test {
 
     function testMultiplePositionsSamPoolDifferentRanges() public {
         vm.startPrank(hook);
+
+        uint256 expectedPetId = _derivePetId(user1);
         
         // User1 creates tight range position
-        registry.hatchFromHook(user1, block.chainid, poolId1, 100);
-        PetRegistry.Pet memory pet1 = registry.getPet(1);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 100);
+        PetRegistry.Pet memory pet1 = registry.getPet(expectedPetId);
         assertEq(pet1.positionId, 100);
         
         // User1 creates wide range position (same pool, different range)
-        registry.hatchFromHook(user1, block.chainid, poolId1, 200);
-        PetRegistry.Pet memory pet2 = registry.getPet(1);
+        registry.hatchFromHook(user1, 0, block.chainid, poolId1, 200);
+        PetRegistry.Pet memory pet2 = registry.getPet(expectedPetId);
         assertEq(pet2.positionId, 200, "Should track new position");
         
         // Old position (100) is abandoned - pet only tracks position 200 now

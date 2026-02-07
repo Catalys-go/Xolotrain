@@ -43,7 +43,7 @@ contract AgentCapabilitiesTest is Test {
         
         // Mint a test pet
         vm.prank(hook);
-        petId = petRegistry.hatchFromHook(owner, CHAIN_ID, poolId, positionId);
+        petId = petRegistry.hatchFromHook(owner, 0, CHAIN_ID, poolId, positionId);
     }
     
     // Note: Basic agent authorization tests are in PetRegistry.t.sol
@@ -61,8 +61,8 @@ contract AgentCapabilitiesTest is Test {
         bytes32 pool3 = keccak256("pool-3");
         
         vm.startPrank(hook);
-        uint256 pet2 = petRegistry.hatchFromHook(owner2, CHAIN_ID, pool2, 67890);
-        uint256 pet3 = petRegistry.hatchFromHook(owner3, CHAIN_ID, pool3, 11111);
+        uint256 pet2 = petRegistry.hatchFromHook(owner2, 0, CHAIN_ID, pool2, 67890);
+        uint256 pet3 = petRegistry.hatchFromHook(owner3, 0, CHAIN_ID, pool3, 11111);
         vm.stopPrank();
         
         // Agent updates health for all pets
@@ -123,7 +123,7 @@ contract AgentCapabilitiesTest is Test {
             owners[i] = address(uint160(0x2000 + i));
             bytes32 pool = keccak256(abi.encodePacked("pool", i));
             vm.prank(hook);
-            tokens[i] = petRegistry.hatchFromHook(owners[i], CHAIN_ID, pool, uint256(i + 100));
+            tokens[i] = petRegistry.hatchFromHook(owners[i], 0, CHAIN_ID, pool, uint256(i + 100));
         }
         
         // Agent batch updates health
@@ -160,7 +160,7 @@ contract AgentCapabilitiesTest is Test {
         for (uint256 i = 0; i < 10; i++) {
             address petOwner = address(uint160(0x3000 + i));
             vm.prank(hook);
-            tokens[i] = petRegistry.hatchFromHook(petOwner, CHAIN_ID, keccak256(abi.encodePacked("pool", i)), i + 200);
+            tokens[i] = petRegistry.hatchFromHook(petOwner, 0, CHAIN_ID, keccak256(abi.encodePacked("pool", i)), i + 200);
         }
         
         vm.startPrank(agent);
@@ -211,8 +211,8 @@ contract AgentCapabilitiesTest is Test {
         
         // Create pets for different owners
         vm.startPrank(hook);
-        uint256 pet2 = petRegistry.hatchFromHook(owner2, CHAIN_ID, keccak256("pool2"), 222);
-        uint256 pet3 = petRegistry.hatchFromHook(owner3, CHAIN_ID, keccak256("pool3"), 333);
+        uint256 pet2 = petRegistry.hatchFromHook(owner2, 0, CHAIN_ID, keccak256("pool2"), 222);
+        uint256 pet3 = petRegistry.hatchFromHook(owner3, 0, CHAIN_ID, keccak256("pool3"), 333);
         vm.stopPrank();
         
         // Agent updates health for all

@@ -126,7 +126,7 @@ contract AutoLpHelperMintFromTokensTest is Test {
         vm.startPrank(solver);
         
         vm.expectRevert(AutoLpHelper.ZeroInput.selector);
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             0,           // Zero USDC
             USDT_AMOUNT,
             -360,
@@ -141,7 +141,7 @@ contract AutoLpHelperMintFromTokensTest is Test {
         vm.startPrank(solver);
         
         vm.expectRevert(AutoLpHelper.ZeroInput.selector);
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             0,           // Zero USDT
             -360,
@@ -156,7 +156,7 @@ contract AutoLpHelperMintFromTokensTest is Test {
         vm.startPrank(solver);
         
         vm.expectRevert(AutoLpHelper.ZeroInput.selector);
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             0,
             0,
             -360,
@@ -171,7 +171,7 @@ contract AutoLpHelperMintFromTokensTest is Test {
         vm.startPrank(solver);
         
         vm.expectRevert(AutoLpHelper.UnauthorizedCaller.selector);
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             -360,
@@ -191,7 +191,7 @@ contract AutoLpHelperMintFromTokensTest is Test {
         
         // Don't approve - should revert on transferFrom
         vm.expectRevert();
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             -360,
@@ -214,7 +214,7 @@ contract AutoLpHelperMintFromTokensTest is Test {
         
         // Try to mint with more than balance
         vm.expectRevert();
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             type(uint128).max,
             type(uint128).max,
             -360,
@@ -240,7 +240,7 @@ contract AutoLpHelperMintFromTokensTest is Test {
         // Struct should have isSwapAndMint = false
         // We can't directly test this in unit test, but we verify encoding doesn't revert
         vm.expectRevert(); // Will revert at unlock callback
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             -360,

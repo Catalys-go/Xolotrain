@@ -90,7 +90,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         IERC20(USDT).approve(address(autoLpHelper), USDT_AMOUNT);
         
         // 3. Solver calls mintLpFromTokens on behalf of user
-        uint256 positionId = autoLpHelper.mintLpFromTokens(
+        uint256 positionId = autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             -360,  // tickLower
@@ -124,7 +124,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         vm.expectEmit(true, true, false, true);
         emit LiquidityAdded(user, 0, 0, 0, 0); // Values will be checked in actual test
         
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             -360,
@@ -150,7 +150,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         
         uint256 userUsdcBefore = IERC20(USDC).balanceOf(user);
         
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             excessUsdc,
             normalUsdt,
             -360,
@@ -178,7 +178,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         int24 tickLower = -360;
         int24 tickUpper = 360;
         
-        uint256 positionId = autoLpHelper.mintLpFromTokens(
+        uint256 positionId = autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             tickLower,
@@ -207,7 +207,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         IERC20(USDC).approve(address(autoLpHelper), USDC_AMOUNT);
         IERC20(USDT).approve(address(autoLpHelper), USDT_AMOUNT);
         
-        uint256 positionId1 = autoLpHelper.mintLpFromTokens(
+        uint256 positionId1 = autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             -360,
@@ -223,7 +223,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         IERC20(USDC).approve(address(autoLpHelper), USDC_AMOUNT);
         IERC20(USDT).approve(address(autoLpHelper), USDT_AMOUNT);
         
-        uint256 positionId2 = autoLpHelper.mintLpFromTokens(
+        uint256 positionId2 = autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             -360,
@@ -251,7 +251,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         IERC20(USDT).approve(address(autoLpHelper), tinyUsdt);
         
         // Should not revert with tiny amounts
-        uint256 positionId = autoLpHelper.mintLpFromTokens(
+        uint256 positionId = autoLpHelper.mintLpFromTokens(0, 
             tinyUsdc,
             tinyUsdt,
             -360,
@@ -277,7 +277,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         IERC20(USDT).approve(address(autoLpHelper), largeUsdt);
         
         // Should not revert with large amounts
-        uint256 positionId = autoLpHelper.mintLpFromTokens(
+        uint256 positionId = autoLpHelper.mintLpFromTokens(0, 
             largeUsdc,
             largeUsdt,
             -360,
@@ -303,7 +303,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         int24 wideLower = -7200;
         int24 wideUpper = 7200;
         
-        uint256 positionId = autoLpHelper.mintLpFromTokens(
+        uint256 positionId = autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             wideLower,
@@ -329,7 +329,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         int24 narrowLower = -60;
         int24 narrowUpper = 60;
         
-        uint256 positionId = autoLpHelper.mintLpFromTokens(
+        uint256 positionId = autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             narrowLower,
@@ -355,7 +355,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         
         uint256 gasBefore = gasleft();
         
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             -360,
@@ -393,7 +393,7 @@ contract AutoLpHelperMintFromTokensIntegrationTest is Test {
         uint256 contractBalanceBefore = IERC20(USDC).balanceOf(address(autoLpHelper));
         
         // Attacker creates position
-        autoLpHelper.mintLpFromTokens(
+        autoLpHelper.mintLpFromTokens(0, 
             USDC_AMOUNT,
             USDT_AMOUNT,
             -360,

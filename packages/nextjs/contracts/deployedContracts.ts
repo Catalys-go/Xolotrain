@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     PetRegistry: {
-      address: "0xb288315b51e6fac212513e1a7c70232fa584bbb9",
+      address: "0xbdcde6ab94dc03b7da497c364b191451c6873509",
       abi: [
         {
           type: "constructor",
@@ -175,6 +175,11 @@ const deployedContracts = {
               internalType: "address",
             },
             {
+              name: "petId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
               name: "chainId",
               type: "uint256",
               internalType: "uint256",
@@ -192,7 +197,7 @@ const deployedContracts = {
           ],
           outputs: [
             {
-              name: "petId",
+              name: "",
               type: "uint256",
               internalType: "uint256",
             },
@@ -208,19 +213,6 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "nextId",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -657,12 +649,33 @@ const deployedContracts = {
             },
           ],
         },
+        {
+          type: "error",
+          name: "PetOwnerMismatch",
+          inputs: [
+            {
+              name: "petId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "expected",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "actual",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+        },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24405748,
+      deployedOnBlock: 24407486,
     },
     EggHatchHook: {
-      address: "0xea0c0cf8b9523e0f73dbe676ad5be79146f28400",
+      address: "0x6a608aafb7748de531156b67bae2cbbfa5cd0400",
       abi: [
         {
           type: "constructor",
@@ -1600,10 +1613,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24405749,
+      deployedOnBlock: 24407487,
     },
     AutoLpHelper: {
-      address: "0x21d9f055b7601f9b5b2e3ac0e2586b3fa5bbd1f3",
+      address: "0x44acdf9fb534ec1f0b9b871d449bffde11009e94",
       abi: [
         {
           type: "constructor",
@@ -1885,6 +1898,11 @@ const deployedContracts = {
           name: "mintLpFromTokens",
           inputs: [
             {
+              name: "petId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
               name: "usdcAmount",
               type: "uint128",
               internalType: "uint128",
@@ -1893,6 +1911,45 @@ const deployedContracts = {
               name: "usdtAmount",
               type: "uint128",
               internalType: "uint128",
+            },
+            {
+              name: "tickLower",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "tickUpper",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "recipient",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "positionId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "mintLpFromUsdcOnly",
+          inputs: [
+            {
+              name: "petId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "usdcAmount",
+              type: "uint256",
+              internalType: "uint256",
             },
             {
               name: "tickLower",
@@ -2278,7 +2335,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24405749,
+      deployedOnBlock: 24407488,
     },
   },
 } as const;

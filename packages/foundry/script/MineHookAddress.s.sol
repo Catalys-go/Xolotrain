@@ -64,10 +64,9 @@ contract MineHookAddress is Script {
         );
         
         console.log("===========================================");
-        console.log("SUCification:");
-        console.log("Address & FLAG_MASK:", uint160(hookAddress) & FLAG_MASK);
-        console.log("Expected FLAGS:", FLAGS);
-        console.log("Match:", (uint160(hookAddress) & FLAG_MASK) == (FLAGS & FLAG_MASK));
+        console.log("SUCCESS:");
+        console.log("Hook Address:", hookAddress);
+        console.log("Salt:", uint256(salt));
         console.log("");
         
         // Compute new poolId for USDC_USDT (the only pool that uses our hook)

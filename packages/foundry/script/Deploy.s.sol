@@ -54,8 +54,21 @@ contract DeployScript is ScaffoldETHDeploy {
 
         // 3) Deploy EggHatchHook (deterministic via CREATE2)
         // Note: poolId is now computed dynamically from PoolKey in the hook
-        bytes32 hookSalt = 0x00000000000000000000000000000000000000000000000000000000000002d8;
-        /* UDATE HOOK  */
+        // Salt varies by chain to produce valid hook addresses with AFTER_ADD_LIQUIDITY_FLAG
+        bytes32 hookSalt;
+        if (block.chainid == 1) {
+            // Ethereum Mainnet: 0x96b98884691eBa1a22B786E250316C38bC1A4400
+            hookSalt = 0x00000000000000000000000000000000000000000000000000000000000007a9;
+        } else if (block.chainid == 8453) {
+            // Base Mainnet: 0x29B8013CdEccE5404800A0561354C31A69448400
+            hookSalt = 0x0000000000000000000000000000000000000000000000000000000000007449;
+        } else if (block.chainid == 31337) {
+            // Localhost/Anvil: 0x950b58fECaF037b1BdaD42Ba88cdDB28a3E34400
+            hookSalt = 0x00000000000000000000000000000000000000000000000000000000000020d8;
+        } else {
+            revert("Unsupported chain - run MineHookAddress.s.sol to generate salt");
+        }
+        
         EggHatchHook eggHatchHook = new EggHatchHook{salt: hookSalt}(address(poolManager), address(petRegistry));
         deployments.push(Deployment({name: "EggHatchHook", addr: address(eggHatchHook)}));
 

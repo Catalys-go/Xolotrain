@@ -11,6 +11,8 @@ import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {ModifyLiquidityParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 
 contract EggHatchHookIntegrationTest is Test {
     using PoolIdLibrary for PoolKey;
@@ -31,28 +33,47 @@ contract EggHatchHookIntegrationTest is Test {
     PoolKey public poolKey;
     PoolId public poolId;
     
+    /// @notice Helper to calculate deterministic pet ID (matches PetRegistry logic)
+    function _derivePetId(address petOwner) internal pure returns (uint256) {
+        return uint256(uint48(bytes6(keccak256(abi.encodePacked("XolotrainPet", petOwner)))));
+    }
+
     function setUp() public {
         vm.startPrank(deployer);
         
         // Deploy registry first (deployer is owner)
         registry = new PetRegistry(deployer);
         
-        // Create pool key
+        // Mine a valid hook address with CREATE2
+        uint160 flags = uint160(Hooks.AFTER_ADD_LIQUIDITY_FLAG);
+        bytes memory constructorArgs = abi.encode(poolManager, address(registry));
+        
+        (address hookAddress, bytes32 salt) = HookMiner.find(
+            deployer, // deployer will use CREATE2
+            flags,
+            type(EggHatchHook).creationCode,
+            constructorArgs
+        );
+        
+        // Deploy hook at the mined address using CREATE2 with the salt
+        hook = new EggHatchHook{salt: salt}(
+            poolManager,
+            address(registry)
+        );
+        
+        // Verify the hook deployed at the expected address
+        require(address(hook) == hookAddress, "Hook address mismatch");
+        
+        // Create pool key with the hook
         poolKey = PoolKey({
             currency0: currency0,
             currency1: currency1,
             fee: FEE,
             tickSpacing: TICK_SPACING,
-            hooks: IHooks(address(0))
+            hooks: IHooks(address(hook))
         });
         
         poolId = poolKey.toId();
-        
-        // Deploy hook with registry (poolId computed dynamically now)
-        hook = new EggHatchHook(
-            poolManager,
-            address(registry)
-        );
         
         // Set hook address in registry
         registry.setHook(address(hook));
@@ -65,13 +86,15 @@ contract EggHatchHookIntegrationTest is Test {
     function testFullHatchFlow() public {
         // Setup: User1 wants to create LP and hatch pet
         uint256 positionId = 42;
+        uint256 petId = 0; // Auto-derive deterministic pet ID
         int24 tickLower = -120;
         int24 tickUpper = 120;
-        bytes memory hookData = abi.encode(user1, positionId, tickLower, tickUpper);
+        bytes memory hookData = abi.encode(user1, petId, positionId, tickLower, tickUpper);
         
         // Verify initial state
         assertEq(registry.totalSupply(), 0);
-        assertFalse(registry.exists(1));
+        uint256 expectedPetId = _derivePetId(user1);
+        assertFalse(registry.exists(expectedPetId));
         
         // Simulate pool manager calling afterAddLiquidity
         vm.startPrank(poolManager);
@@ -98,11 +121,11 @@ contract EggHatchHookIntegrationTest is Test {
         assertEq(selector, IHooks.afterAddLiquidity.selector);
         
         // Verify pet was created
-        assertTrue(registry.exists(1), "Pet should exist");
+        assertTrue(registry.exists(expectedPetId), "Pet should exist");
         assertEq(registry.totalSupply(), 1, "Should have 1 pet");
         
         // Verify pet details
-        PetRegistry.Pet memory pet = registry.getPet(1);
+        PetRegistry.Pet memory pet = registry.getPet(expectedPetId);
         assertEq(pet.owner, user1, "User1 should own pet");
         assertEq(pet.health, 100);
         assertEq(pet.lastUpdate, block.timestamp);
@@ -126,7 +149,7 @@ contract EggHatchHookIntegrationTest is Test {
         
         // User1 creates multiple positions - all update SAME pet (idempotent)
         for (uint256 i = 1; i <= 5; i++) {
-            bytes memory hookData = abi.encode(user1, i * 100, tickLower, tickUpper); // Position IDs: 100, 200, 300, 400, 500
+            bytes memory hookData = abi.encode(user1, uint256(0), i * 100, tickLower, tickUpper); // Position IDs: 100, 200, 300, 400, 500, petId=0
             
             hook.afterAddLiquidity(
                 poolManager,
@@ -144,7 +167,8 @@ contract EggHatchHookIntegrationTest is Test {
         assertEq(registry.totalSupply(), 1, "Should have 1 pet (idempotent)");
         
         // Verify pet has latest position ID
-        PetRegistry.Pet memory pet = registry.getPet(1);
+        uint256 expectedPetId = _derivePetId(user1);
+        PetRegistry.Pet memory pet = registry.getPet(expectedPetId);
         assertEq(pet.positionId, 500, "Pet should have latest position ID");
     }
 }
