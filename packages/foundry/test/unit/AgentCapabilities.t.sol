@@ -188,7 +188,6 @@ contract AgentCapabilitiesTest is Test {
     }
     
     function testAgentCanBeChanged() public {
-        address oldAgent = agent;
         address newAgent = address(0xA6E49);
         
         petRegistry.setAgent(newAgent);

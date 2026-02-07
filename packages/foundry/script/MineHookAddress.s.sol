@@ -39,7 +39,7 @@ contract MineHookAddress is Script {
     address constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
 
 
-    function run(address poolManager, address petRegistry, uint256 chainId) external {
+    function run(address poolManager, address petRegistry, uint256 chainId) external view {
         console.log("===========================================");
         console.log("Mining Hook Address for EggHatchHook");
         console.log("===========================================");
