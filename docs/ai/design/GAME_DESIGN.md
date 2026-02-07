@@ -13,7 +13,7 @@
 2. NURTURE → LP position earns fees → Axolotl stays healthy
 3. MONITOR → Agent tracks LP health → Updates axolotl state
 4. MANAGE → User adjusts LP → Axolotl reacts to changes
-5. TRAVEL → User bridges assets via Compact (intents)→ Axolotl moves to new chain
+5. TRAVEL → User bridges assets via Compact (intents) → Axolotl moves to new chain
 ```
 
 ---

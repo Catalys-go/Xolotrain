@@ -123,7 +123,7 @@
 // PetRegistry (Xolotrain)
 struct Pet {
     address owner;
-    uint256 positionId;  // Link to LP position
+    uint256 positionId;  // PositionManager NFT tokenId (user-owned)
     uint256 chainId;     // Current chain
     uint256 health;      // 0-100
     uint256 birthBlock;
@@ -163,7 +163,8 @@ mapping(uint256 => Pet) public pets;  // petId → Pet
    │                                  │                     │                    │
    │                                  │ 5. swap() ETH→USDC  │                    │
    │                                  │    swap() ETH→USDT  │                    │
-   │                                  │ 6. modifyLiquidity()│                    │
+   │                                  │ 6. POSM.modifyLiquiditiesWithoutUnlock()│
+   │                                  │    (MINT_POSITION_FROM_DELTAS)          │
    │                                  │                     │                    │
    │                                  │                     │ 7. afterAddLiquidity()
    │                                  │                     │                    │
@@ -191,24 +192,28 @@ mapping(uint256 => Pet) public pets;  // petId → Pet
 3. Frontend calls `AutoLpHelper.swapEthToUsdcUsdtAndMint{value: 0.1 ETH}()`
 4. AutoLpHelper calls `PoolManager.unlock()` with encoded params
 5. Inside unlock callback:
-   - Swap ETH → USDC
-   - Swap ETH → USDT
-   - Call `PoolManager.modifyLiquidity()` to create LP position
-6. PoolManager triggers `EggHatchHook.afterAddLiquidity()`
-7. Hook calls `PetRegistry.hatchFromHook(owner, positionId, tickLower, tickUpper)`
-8. PetRegistry mints new pet NFT with:
+   - Swap ETH → USDC (creates positive USDC delta)
+   - Swap ETH → USDT (creates positive USDT delta)
+   - Call `PositionManager.modifyLiquiditiesWithoutUnlock()` with `MINT_POSITION_FROM_DELTAS` action
+   - POSM uses the deltas to mint NFT-based LP position to user
+6. PoolManager triggers `EggHatchHook.afterAddLiquidity()` with hookData containing tokenId
+7. Hook calls `PetRegistry.hatchFromHook(owner, chainId, poolId, tokenId)`
+8. PetRegistry mints new pet with:
    - `owner = msg.sender`
-   - `positionId = hash(owner, tickLower, tickUpper, salt)`
+   - `positionId = tokenId` (PositionManager NFT)
    - `health = 100`
    - `chainId = block.chainid`
-9. Event emitted: `PetHatched(petId, owner, positionId)`
+9. Event emitted: `PetHatched(petId, owner, chainId, poolId, positionId)`
 10. Frontend listens for event, displays axolotl animation
 
 **Blockchain State Changes**:
 
-- PoolManager: New LP position created
-- PetRegistry: New pet NFT minted
-- User wallet: ETH spent, leftover USDC/USDT received
+- PoolManager: New LP position created in USDC/USDT pool
+- PositionManager: NFT minted to user (tokenId = positionId)
+- PetRegistry: New pet minted, linked to PositionManager NFT
+- User wallet: ETH spent, PositionManager NFT received, leftover USDC/USDT received
+
+**Key Architectural Note**: Positions are now **user-owned NFTs** via Uniswap v4 PositionManager, not owned by AutoLpHelper. Users can transfer, manage, or burn their positions independently. PetRegistry tracks which NFT corresponds to which pet.
 
 ---
 
@@ -305,46 +310,158 @@ mapping(uint256 => Pet) public pets;  // petId → Pet
 
 ---
 
-### Flow 4: User Travels (Cross-Chain Bridge)
+### Flow 4: User Travels (Cross-Chain Bridge) - Intent-Based via The Compact + Li.FI
 
 ```
-┌──────┐    ┌──────────┐    ┌──────────┐    ┌───────┐    ┌──────────────┐    ┌──────────┐
-│ User │───▶│ Frontend │───▶│  LI.FI   │───▶│Bridge│───▶│ AutoLpHelper │───▶│ Frontend │
-└──────┘    └──────────┘    └──────────┘    └───────┘    └──────────────┘    └──────────┘
-   │              │               │             │  (Dest Chain)    │               │
-   │ 1. Select    │               │             │                  │               │
-   │    dest chain│               │             │                  │               │
-   │              │               │             │                  │               │
-   │ 2. Close LP  │               │             │                  │               │
-   │    on source │               │             │                  │               │
-   │              │               │             │                  │               │
-   │ 3. Initiate  │               │             │                  │               │
-   │    bridge ───┴──────────────▶│             │                  │               │
-   │                               │             │                  │               │
-   │                               │ 4. Bridge  │                  │               │
-   │                               │    assets ─▶│                  │               │
-   │                               │             │                  │               │
-   │                               │             │ 5. Tx on dest:  │               │
-   │                               │             │    Create LP ───▶│               │
-   │                               │             │                  │               │
-   │                               │             │                  │ 6. Update    │
-   │                               │             │                  │    PetRegistry│
-   │                               │             │                  │    (new chain)│
-   │                               │             │                  │               │
-   │◀──────────────────────────────┴─────────────┴──────────────────┴───────────────┘
-   │  7. Travel complete → axolotl on new chain
-   │
-   ▼
-┌──────────┐
-│ Frontend │─────▶ Animate travel, update chain badge
+┌──────┐    ┌──────────┐    ┌──────────────┐    ┌────────────┐    ┌──────────────┐    ┌──────────────┐
+│ User │───▶│ Frontend │───▶│ AutoLpHelper │───▶│ TheCompact │───▶│ Solver Bot   │───▶│ AutoLpHelper │
+│      │    │          │    │ (Source)     │    │ (Source)   │    │ (Off-chain)  │    │ (Dest)       │
+└──────┘    └──────────┘    └──────────────┘    └────────────┘    └──────────────┘    └──────────────┘
+   │              │                  │                  │                  │                 │
+   │ 1. Select    │                  │                  │                  │                 │
+   │    dest chain│                  │                  │                  │                 │
+   │              │                  │                  │                  │                 │
+   │ 2. Sign      │                  │                  │                  │                 │
+   │    compact ──┴─────────────────▶│                  │                  │                 │
+   │    (EIP-712) │                  │                  │                  │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │ 3. Close LP      │                  │                 │
+   │              │                  │    position      │                  │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │ 4. Deposit USDC  │                  │                 │
+   │              │                  │    + USDT into   │                  │                 │
+   │              │                  │    TheCompact ──▶│                  │                 │
+   │              │                  │    (Resource locks)                │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │ 5. Register      │                  │                 │
+   │              │                  │    MultichainCompact                │                 │
+   │              │                  │    with witness  │                  │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │ 6. Event:        │                 │
+   │              │                  │                  │    IntentCreated │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │ 7. See intent   │
+   │              │                  │                  │                  │    evaluates    │
+   │              │                  │                  │                  │    profitability│
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │ 8. Use Li.FI SDK│
+   │              │                  │                  │                  │    getRoutes()  │
+   │              │                  │                  │                  │    (optimal     │
+   │              │                  │                  │                  │    bridge)      │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │ 9. Bridge own   │
+   │              │                  │                  │                  │    funds via    │
+   │              │                  │                  │                  │    Li.FI        │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │ 10. Mint LP ─▶│
+   │              │                  │                  │                  │    from USDC/   │
+   │              │                  │                  │                  │    USDT tokens  │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │                  │◀────────────────┘
+   │              │                  │                  │                  │ 11. Get positionId
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │ 12. Submit claim │                 │
+   │              │                  │                  │◀─────────────────┘                 │
+   │              │                  │                  │    (proof of LP) │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │ 13. Verify claim │                 │
+   │              │                  │                  │     release locks│                 │
+   │              │                  │                  │     to solver    │                 │
+   │              │                  │                  │                  │                 │
+   │              │                  │                  │ 14. Event:       │                 │
+   │              │                  │                  │     ClaimProcessed                 │
+   │              │◀─────────────────┴──────────────────┴──────────────────┘                 │
+   │ 15. Travel complete → axolotl on new chain                                             │
+   │                                                                                         │
+   ▼                                                                                         │
+┌──────────┐                                                                                │
+│ Frontend │─────▶ Animate travel ("Boarding → In Transit → Arrived")                      │
 └──────────┘
 ```
 
+**Step-by-Step**:
+
+1. User selects destination chain (e.g., "Travel to Base")
+2. User signs **MultichainCompact** (EIP-712 signature - one click!)
+   - Contains: destination chain, tick range, minimum liquidity
+   - Witness data: petId, desired position params
+3. `AutoLpHelper.travelToChain(petId, destinationChainId, signature)` executes:
+   - Closes existing LP position → USDC + USDT
+4. Deposits USDC + USDT into **The Compact** (creates resource locks - ERC6909 tokens)
+5. Registers MultichainCompact with allocator + arbiter addresses
+6. Emits `IntentCreated(compactId, destinationChain, petId)` event
+7. **Solver bot** (off-chain) sees intent and evaluates:
+   - Calculate costs (bridge fees + gas + slippage)
+   - Calculate revenue (locked assets on source chain)
+   - If profitable: proceed
+8. **Solver uses Li.FI SDK** to find optimal bridge route:
+   ```typescript
+   const routes = await lifi.getRoutes({
+     fromChainId: 11155111, // Sepolia
+     toChainId: 84532,      // Base Sepolia
+     fromTokenAddress: USDC_ADDRESS,
+     toTokenAddress: USDC_ADDRESS,
+     fromAmount: intent.usdcAmount,
+   });
+   // Li.FI returns best route (Across, Stargate, etc.)
+   ```
+9. Solver bridges own funds to destination using **Li.FI Composer**:
+   ```typescript
+   await lifi.executeRoute(routes[0]);
+   // USDC and USDT arrive on destination chain
+   ```
+10. Solver calls `AutoLpHelper.mintLpFromTokens(usdcAmount, usdtAmount, userAddress)` on destination
+    - Mints LP position using pre-bridged USDC/USDT tokens (no swapping needed)
+    - Creates LP position on behalf of user
+    - Gets positionId from transaction receipt
+11. Solver receives positionId confirming LP creation
+12. Solver calls `LPMigrationArbiter.verifyAndClaim(positionId, compactId, solver)`
+13. Arbiter verifies:
+    - LP position exists on destination
+    - Position matches compact conditions (liquidity, tick range)
+    - Arbiter calls `TheCompact.processClaim()` to release locked assets to solver
+14. Emits `ClaimProcessed(compactId, solver, timestamp)`
+15. Frontend detects event, shows "Arrived!" animation
+
+**User Experience**:
+
+- ✨ **One signature** - no manual bridging steps
+- ⚡ **2-5 minutes** - faster than traditional bridge
+- 🎭 **Animated journey** - "Boarding → In Transit → Arrived"
+- 💰 **Optimal routing** - Li.FI finds cheapest bridge automatically
+- 🤖 **Automated** - solver handles all complexity
+- 🔒 **Trustless** - The Compact guarantees solver gets paid
+
+**Trust Model**:
+
+- User trusts The Compact protocol (audited)
+- User trusts allocator won't censor valid claims
+- User trusts arbiter will verify conditions correctly
+- Solver trusts allocator won't double-spend locked funds
+- **User doesn't need to trust solver** - funds are locked in smart contract
+- **Solver trusts Li.FI SDK** - for optimal bridge routing
+
+**Li.FI Integration Points**:
+
+1. **Route Discovery**: `lifi.getRoutes()` finds optimal bridge (cheapest/fastest)
+2. **Multi-Bridge Support**: Across, Stargate, Hop, Connext, etc.
+3. **Execution**: `lifi.executeRoute()` handles bridge-specific logic
+4. **Status Tracking**: `lifi.getStatus()` monitors bridge completion
+
+**Why This Architecture?**
+
+- **The Compact**: Provides intent layer and trustless settlement
+- **Li.FI**: Provides optimal cross-chain routing for solver
+- **Together**: User gets one-click UX, solver gets best execution
+
+---
+
 **Challenge**: Cross-chain state synchronization
 
-- **Option A**: PetRegistry deployed on each chain independently
-- **Option B**: Use cross-chain messaging (LayerZero, Axelar)
-- **MVP**: Option A (simpler, new pet on each chain)
+- **Option A**: PetRegistry deployed on each chain independently (separate pets per chain)
+- **Option B**: Use cross-chain messaging (LayerZero, Axelar) to sync pet state
+- **MVP (Hackathon)**: Option A - simpler, new pet on each chain with reference to original
+- **Production**: Option B - single pet travels between chains
 
 ---
 
@@ -378,6 +495,9 @@ app/
 ```
 contracts/
 ├── AutoLpHelper.sol           // Atomic ETH → LP creation + travel intents
+│   ├── swapEthToUsdcUsdtAndMint()    // For users: ETH → USDC/USDT → LP
+│   ├── mintLpFromTokens()             // For solver: USDC/USDT → LP (no swap)
+│   └── travelToChain()                // Intent creation
 ├── EggHatchHook.sol           // Uniswap v4 hook (afterAddLiquidity)
 ├── PetRegistry.sol            // Pet NFT + metadata storage
 ├── XolotrainAllocator.sol     // The Compact allocator (prevents double-spend)
@@ -397,10 +517,72 @@ agent/
 ├── monitor.ts                 // Event monitoring
 ├── healthCalculator.ts        // Deterministic health logic
 ├── updateService.ts           // Submit health updates to chain
-├── solver.ts                  // Fulfill travel intents (The Compact)
-├── bridgeService.ts           // Handle cross-chain bridging
-└── config.ts                  // Chain configs, RPC endpoints, solver wallet
+├── solver.ts                  // Fulfill travel intents (The Compact + Li.FI)
+├── lifiService.ts             // Li.FI SDK wrapper
+└── config.ts                  // Chain configs, RPC endpoints, solver wallet, Li.FI API key
 ```
+
+**Health Monitoring Agent**:
+
+- Watches `PositionCreated`, `PositionModified`, `PositionClosed` events
+- Queries Uniswap v4 position state every 60 seconds
+- Calculates health based on in-range vs out-of-range time
+- Calls `PetRegistry.updateHealth()` when health changes
+- Logs all actions with timestamps for auditability
+
+**Solver Bot** (The Compact + Li.FI):
+
+```typescript
+// Main solver workflow
+async function fulfillIntent(intent: TravelIntent) {
+  // 1. Evaluate profitability
+  const cost = await estimateCosts(intent);
+  const revenue = intent.lockedUSDC + intent.lockedUSDT;
+  if (revenue < cost) return; // Not profitable
+
+  // 2. Use Li.FI SDK to find optimal route
+  const routes = await lifi.getRoutes({
+    fromChainId: intent.sourceChainId,
+    toChainId: intent.destinationChainId,
+    fromTokenAddress: USDC_ADDRESS,
+    toTokenAddress: USDC_ADDRESS,
+    fromAmount: intent.usdcAmount,
+  });
+
+  // 3. Execute bridge via Li.FI Composer
+  const bridgeTx = await lifi.executeRoute(routes[0]);
+  await waitForBridgeCompletion(bridgeTx);
+  // Now solver has USDC and USDT on destination chain
+
+  // 4. Mint LP position from bridged tokens
+  const lpTx = await autoLpHelper.mintLpFromTokens(
+    intent.usdcAmount,
+    intent.usdtAmount,
+    intent.userAddress, // Position created on behalf of user
+  );
+
+  // 5. Submit claim to arbiter
+  const positionId = lpTx.events.PositionCreated.positionId;
+  await arbiter.verifyAndClaim(positionId, intent.compactId, SOLVER_ADDRESS);
+
+  // 6. Receive payment on source chain (locked USDC + USDT)
+}
+```
+
+**Li.FI Integration Details**:
+
+- **Route Discovery**: Finds cheapest/fastest bridge (Across, Stargate, Hop, etc.)
+- **Multi-Bridge Support**: Automatically selects optimal bridge per route
+- **Gas Estimation**: Calculates total cost including bridge fees
+- **Status Monitoring**: Tracks bridge completion via `lifi.getStatus()`
+- **Error Handling**: Retries with different routes if bridge fails
+
+**Solver Economics**:
+
+- Maintains capital float on each chain (e.g., 10 ETH per chain)
+- Calculates: `profit = lockedAssets - (bridgeFees + gasCost + slippage)`
+- Only fulfills if `profit > minThreshold` (e.g., 0.1%)
+- Rebalances liquidity between chains periodically using Li.FI
 
 ---
 

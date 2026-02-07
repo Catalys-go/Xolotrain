@@ -7,10 +7,12 @@ import {AutoLpHelper} from "../contracts/AutoLpHelper.sol";
 import {EggHatchHook} from "../contracts/EggHatchHook.sol";
 import {PetRegistry} from "../contracts/PetRegistry.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
+import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 
 /**
  * @notice Main deployment script for all contracts
@@ -19,6 +21,8 @@ import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionMa
  * Example: yarn deploy # runs this script(without`--file` flag)
  */
 contract DeployScript is ScaffoldETHDeploy {
+    using PoolIdLibrary for PoolKey;
+    
     function run() external ScaffoldEthDeployerRunner {
         string memory json = vm.readFile(string.concat(vm.projectRoot(), "/addresses/poolKeys.json"));
         string memory prefix = string.concat(".", vm.toString(block.chainid));
@@ -29,8 +33,9 @@ contract DeployScript is ScaffoldETHDeploy {
         address positionManager = vm.parseJsonAddress(json, string.concat(prefix, ".positionManager"));
         address poolManager = vm.parseJsonAddress(json, string.concat(prefix, ".poolManager"));
 
-        // 1) Deploy AutoLpHelper
-        AutoLpHelper autoLpHelper = new AutoLpHelper(
+        // 1) Deploy AutoLpHelper (deterministic via CREATE2)
+        bytes32 helperSalt = keccak256("AutoLpHelper.v1");
+        AutoLpHelper autoLpHelper = new AutoLpHelper{salt: helperSalt}(
             IPoolManager(poolManager),
             IPositionManager(positionManager),
             ethUsdc,
@@ -42,15 +47,25 @@ contract DeployScript is ScaffoldETHDeploy {
         );
         deployments.push(Deployment({name: "AutoLpHelper", addr: address(autoLpHelper)}));
 
-        // 2) Deploy PetRegistry
-        PetRegistry petRegistry = new PetRegistry();
+        // 2) Deploy PetRegistry (deterministic via CREATE2)
+        bytes32 registrySalt = keccak256("PetRegistry.v1");
+        PetRegistry petRegistry = new PetRegistry{salt: registrySalt}(deployer);
         deployments.push(Deployment({name: "PetRegistry", addr: address(petRegistry)}));
 
-        // 3) Deploy EggHatchHook and link registry
-        bytes32 poolId = vm.parseJsonBytes32(json, string.concat(prefix, ".USDC_USDT.poolId"));
-        EggHatchHook eggHatchHook = new EggHatchHook(address(poolManager), address(petRegistry), poolId);
+        // 3) Deploy EggHatchHook (deterministic via CREATE2)
+        // Note: poolId is now computed dynamically from PoolKey in the hook
+        bytes32 hookSalt = 0x00000000000000000000000000000000000000000000000000000000000002d8;
+        EggHatchHook eggHatchHook = new EggHatchHook{salt: hookSalt}(address(poolManager), address(petRegistry));
         deployments.push(Deployment({name: "EggHatchHook", addr: address(eggHatchHook)}));
         petRegistry.setHook(address(eggHatchHook));
+
+        // 4) Initialize USDC_USDT pool at 1:1 price (tick 0)
+        uint160 sqrtPriceX96 = TickMath.getSqrtPriceAtTick(0);
+        try IPoolManager(poolManager).initialize(usdcUsdt, sqrtPriceX96) {
+            console.logString("USDC_USDT pool initialized successfully at 1:1 price");
+        } catch {
+            console.logString("USDC_USDT pool already initialized (skipping)");
+        }
 
         console.logString("All contracts deployed and exported!");
         console.logString("AutoLpHelper:");

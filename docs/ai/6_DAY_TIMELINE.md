@@ -5,6 +5,43 @@
 
 ---
 
+
+## 🚨 CRITICAL: Egg Delivery Flow (DESIGN DECISION)
+
+**Status**: ❓ Unclear how users acquire eggs before hatching
+
+**Current Implementation**:
+
+- AutoLpHelper `swapEthToUsdcUsdtAndMint()` creates LP position
+- EggHatchHook fires `afterAddLiquidity` and mints pet NFT
+- But conceptually: where's the "egg" in this flow?
+
+**Options to Consider**:
+
+1. **No Egg NFT** (Simplest - Current)
+   - User clicks "Hatch" → LP created + pet minted atomically
+   - "Egg" is just UI metaphor, not on-chain asset
+   - ✅ Simplest, fewer contracts
+   - ❌ Can't gift/trade eggs separately
+
+2. **Egg NFT Pre-Mint**
+   - User mints egg NFT first (separate transaction)
+   - When creating LP, burn egg + mint pet
+   - ✅ Eggs are tradeable assets
+   - ❌ Extra transaction, more gas, egg contract needed
+
+3. **Egg Auto-Airdrop on Wallet Connect**
+   - Every new user gets 1 egg automatically
+   - Hook burns egg when hatching
+   - ✅ Simple onboarding
+   - ❌ Requires automation, potential abuse
+
+**Decision Needed**: Pick option and implement before hook address is fixed
+
+**Priority**: 🟡 MEDIUM - Affects UX but not blocking
+
+---
+
 ## 🎯 MVP Scope (What We're Building)
 
 ### Core Features ✅
@@ -49,8 +86,8 @@
 - [x] Implement PetRegistry contract
 - [x] Implement EggHatchHook contract
 - [x] Write basic tests (Foundry)
-- [ ] Update packages/nextjs/app/liquidity/page.tsx to properly show needed info from contracts
-- [ ] Deploy to local Anvil fork
+- [x] Update packages/nextjs/app/liquidity/page.tsx to properly show needed info from contracts
+- [x] Deploy to local Anvil fork
 
 **Evening Review**:
 
@@ -102,6 +139,13 @@
 ---
 
 ### **Day 3: Solver Bot + Agent + Li.FI Integration** ⏱️ 9-11 hours
+
+**❓ How The Compact + Li.FI Work Together**:
+
+- **The Compact**: Provides intent layer (user signs once, assets locked, trustless settlement)
+- **Li.FI**: Provides bridge routing layer (solver uses SDK to find optimal bridge)
+- **Flow**: User creates intent → Solver uses Li.FI to bridge own capital → Solver creates LP → Solver claims locked assets
+- **Why Both?**: The Compact handles **what** to do (intent), Li.FI handles **how** to do it (routing)
 
 **Morning (4-5 hours)**:
 
@@ -160,6 +204,7 @@
 **Morning (4 hours)**:
 
 - [ ] Design Axolotl component
+
   ```tsx
   <Axolotl health={85} chainId={11155111} isHatching={false} />
   ```

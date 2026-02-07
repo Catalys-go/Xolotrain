@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     AutoLpHelper: {
-      address: "0x94afd75db06a12fd106f02c194835a6dcb47bbee",
+      address: "0x432bdb1b79f5edd44db1cc8e5dc41fcfa55a163c",
       abi: [
         {
           type: "constructor",
@@ -286,8 +286,43 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "quoteSwapOutputs",
+          inputs: [
+            {
+              name: "ethAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "usdcOut",
+              type: "uint128",
+              internalType: "uint128",
+            },
+            {
+              name: "usdtOut",
+              type: "uint128",
+              internalType: "uint128",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "swapEthToUsdcUsdtAndMint",
-          inputs: [],
+          inputs: [
+            {
+              name: "minUsdcOut",
+              type: "uint128",
+              internalType: "uint128",
+            },
+            {
+              name: "minUsdtOut",
+              type: "uint128",
+              internalType: "uint128",
+            },
+          ],
           outputs: [
             {
               name: "liquidity",
@@ -351,13 +386,19 @@ const deployedContracts = {
         },
         {
           type: "event",
-          name: "PositionCreated",
+          name: "LiquidityAdded",
           inputs: [
             {
               name: "owner",
               type: "address",
               indexed: true,
               internalType: "address",
+            },
+            {
+              name: "tokenId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
             },
             {
               name: "ethInput",
@@ -432,15 +473,40 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24379745,
+      deployedOnBlock: 24391360,
     },
     PetRegistry: {
-      address: "0xec5ab17cc35221cdf54eaeb0868ea82d4d75d9bf",
+      address: "0xb288315b51e6fac212513e1a7c70232fa584bbb9",
       abi: [
         {
           type: "constructor",
-          inputs: [],
+          inputs: [
+            {
+              name: "initialOwner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
           stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "activePetId",
+          inputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
         },
         {
           type: "function",
@@ -476,6 +542,25 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "getActivePetId",
+          inputs: [
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "getPet",
           inputs: [
             {
@@ -497,6 +582,11 @@ const deployedContracts = {
                 },
                 {
                   name: "health",
+                  type: "uint256",
+                  internalType: "uint256",
+                },
+                {
+                  name: "birthBlock",
                   type: "uint256",
                   internalType: "uint256",
                 },
@@ -635,6 +725,11 @@ const deployedContracts = {
             },
             {
               name: "health",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "birthBlock",
               type: "uint256",
               internalType: "uint256",
             },
@@ -869,6 +964,49 @@ const deployedContracts = {
           anonymous: false,
         },
         {
+          type: "event",
+          name: "PetMigrated",
+          inputs: [
+            {
+              name: "petId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
+            },
+            {
+              name: "owner",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "oldChainId",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "newChainId",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "newPoolId",
+              type: "bytes32",
+              indexed: false,
+              internalType: "bytes32",
+            },
+            {
+              name: "newPositionId",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
           type: "error",
           name: "InvalidAgent",
           inputs: [
@@ -963,6 +1101,22 @@ const deployedContracts = {
         },
         {
           type: "error",
+          name: "PetAlreadyExists",
+          inputs: [
+            {
+              name: "owner",
+              type: "address",
+              internalType: "address",
+            },
+            {
+              name: "existingPetId",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+        },
+        {
+          type: "error",
           name: "PetNotFound",
           inputs: [
             {
@@ -974,10 +1128,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24379746,
+      deployedOnBlock: 24391360,
     },
     EggHatchHook: {
-      address: "0x73992bad0ee2bf03588da062f1bdbcf45088ea07",
+      address: "0x33e0799e791d3057d20eed1dfb5db2f21d160400",
       abi: [
         {
           type: "constructor",
@@ -992,26 +1146,8 @@ const deployedContracts = {
               type: "address",
               internalType: "address",
             },
-            {
-              name: "_poolId",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
           ],
           stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "POOL_ID",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "bytes32",
-              internalType: "bytes32",
-            },
-          ],
-          stateMutability: "view",
         },
         {
           type: "function",
@@ -1049,7 +1185,7 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "",
+              name: "key",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -1839,7 +1975,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24379746,
+      deployedOnBlock: 24391360,
     },
   },
 } as const;
