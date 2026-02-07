@@ -24,8 +24,8 @@
       "token1": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       "fee": 10,
       "tickSpacing": 1,
-      "hooks": "0x0000000000000000000000000000000000000000",
-      "poolId": "0x8aa4e11cbdf30eedc92100f4c8a31ff748e201d44712cc8c90d189edaa8e4e47"
+      "hooks": "0x96b98884691eBa1a22B786E250316C38bC1A4400",
+      "poolId": "0x0e7df5b8357e35c56fd1e0cc110c9dcf6d4e4e2374e4db44ff5923ae1dc99b5a"
     }
   },
   "31337": {
@@ -53,36 +53,29 @@
       "token1": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       "fee": 10,
       "tickSpacing": 1,
-      "hooks": "0x33E0799e791D3057D20eeD1dFb5db2F21D160400",
+      "hooks": "0xEa0C0Cf8B9523E0f73dbe676AD5Be79146f28400",
       "poolId": "0x50114ea1a600546fcd02211454a6e8480467d651fc2bdc7f093056c4c5ecf4de"
     }
   },
   "8453": {
     "chainName": "base",
     "poolManager": "0x498581ff718922c3f8e6a244956af099b2652b2b",
+    "positionManager": "0x7c5f5a4bbd8fd63184577525326123b519429bdc",
     "ETH_USDC": {
-      "token0": "",
-      "token1": "",
-      "fee": 0,
-      "tickSpacing": 0,
+      "token0": "0x0000000000000000000000000000000000000000",
+      "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "fee": 500,
+      "tickSpacing": 10,
       "hooks": "0x0000000000000000000000000000000000000000",
-      "poolId": ""
-    },
-    "ETH_USDT": {
-      "token0": "",
-      "token1": "",
-      "fee": 0,
-      "tickSpacing": 0,
-      "hooks": "0x0000000000000000000000000000000000000000",
-      "poolId": ""
+      "poolId": "0x96d4b53a38337a5733179751781178a2613306063c511b78cd02684739288c0a"
     },
     "USDC_USDT": {
-      "token0": "",
-      "token1": "",
-      "fee": 0,
-      "tickSpacing": 0,
-      "hooks": "0x0000000000000000000000000000000000000000",
-      "poolId": ""
+      "token0": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "token1": "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",
+      "fee": 7,
+      "tickSpacing": 1,
+      "hooks": "0x29B8013CdEccE5404800A0561354C31A69448400",
+      "poolId": "0x758a27a06e273df9293e3d51291fe28a663b2e5d3ca0207033fb119a0fe2bc0e"
     }
   }
 }

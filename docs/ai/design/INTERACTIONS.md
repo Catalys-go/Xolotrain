@@ -309,8 +309,8 @@ await writeContractAsync({
 
 **State Changes**:
 
-- Old position closed (liquidity → USDC + USDT → ETH)
-- New position opened (ETH → USDC + USDT → liquidity)
+- Old position closed (liquidity → USDC + USDT)
+- New position opened (USDC + USDT → liquidity)
 - Pet positionId updated
 - Health potentially restored if new range is better
 
@@ -442,6 +442,7 @@ await writeContractAsync({
 5. Monitors `IntentCreated` events
 6. Calculates profitability: `lockedAssets - (bridgeFees + gas)`
 7. Uses **Li.FI SDK** to find optimal bridge route:
+
 ```typescript
 const routes = await lifi.getRoutes({
   fromChainId: 11155111, // Sepolia
@@ -452,17 +453,10 @@ const routes = await lifi.getRoutes({
 });
 ```
 
-**Solver Fulfills (Off-Chain)**: 
-**Settlement (Back to Source Chain)**:
-13. Arbiter verifies LP exists and matches conditions
-14. Calls `TheCompact.processClaim()` to release locked USDC + USDT to solver
-15. Emits `ClaimProcessed(compactId, solver, timestamp)`
-9. Creates LP position on Base on behalf of user using bridged tokens
+**Solver Fulfills (Off-Chain)**:
+**Settlement (Back to Source Chain)**: 13. Arbiter verifies LP exists and matches conditions 14. Calls `TheCompact.processClaim()` to release locked USDC + USDT to solver 15. Emits `ClaimProcessed(compactId, solver, timestamp)` 9. Creates LP position on Base on behalf of user using bridged tokens
 
-**On Destination Chain (Base)**: 
-10. Solver calls `AutoLpHelper.mintLpFromTokens(usdcAmount, usdtAmount, userAddress)` on destination - Mints LP position using pre-bridged USDC/USDT tokens (no swapping needed) - Gets positionId from transaction receipt 
-11. Solver receives positionId confirming LP creation 
-12. Calls `LPMigrationArbiter.verifyAndClaim(positionId, compactId, solverAddress)`
+**On Destination Chain (Base)**: 10. Solver calls `AutoLpHelper.mintLpFromTokens(usdcAmount, usdtAmount, userAddress)` on destination - Mints LP position using pre-bridged USDC/USDT tokens (no swapping needed) - Gets positionId from transaction receipt 11. Solver receives positionId confirming LP creation 12. Calls `LPMigrationArbiter.verifyAndClaim(positionId, compactId, solverAddress)`
 
 **Settlement (Back to Source Chain)**: 13. Arbiter verifies LP exists and matches conditions 14. Calls `TheCompact.processClaim()` to release locked USDC + USDT to solver 15. Emits `ClaimProcessed(compactId, solver, timestamp)`
 
@@ -596,9 +590,18 @@ You can create a new Axolotl anytime!
 
 ---
 
-## 🤖 Agent Behaviors
+## 🤖 Agent Behaviors (Unified System)
 
-### 1. Monitor LP Positions
+The Agent is a **single unified service** with dual responsibilities:
+
+1. **Health Monitoring** (continuous polling)
+2. **Intent Fulfillment** (event-driven solver)
+
+Both run concurrently in the same process.
+
+---
+
+### 1. Monitor LP Positions (Health Monitoring)
 
 **Trigger**: Every N blocks (e.g., every 10 blocks = ~2 minutes)
 
@@ -802,6 +805,124 @@ useEffect(() => {
 - Health < 80: 🟡 Info notification
 - Health < 50: 🟠 Warning notification
 - Health < 20: 🔴 Critical alert + sound
+
+---
+
+### 6. Monitor Travel Intents (Intent Fulfillment)
+
+**Trigger**: `IntentCreated` event emitted by `AutoLpHelper`
+
+**Agent Logic**:
+
+```typescript
+// Listen for travel intents
+autoLpHelper.on("IntentCreated", async (event) => {
+  const { compactId, destinationChainId, usdcAmount, usdtAmount, userAddress } =
+    event.args;
+
+  // 1. Evaluate profitability
+  const bridgeCost = await estimateLiFiBridgeCost(usdcAmount + usdtAmount);
+  const gasEstimate = await estimateGasCost(destinationChainId);
+  const revenue = usdcAmount + usdtAmount;
+  const profit = revenue - bridgeCost - gasEstimate;
+
+  if (profit < MIN_PROFIT_THRESHOLD) {
+    console.log(`⏭️ Skipping intent ${compactId}: unprofitable (${profit})`);
+    return;
+  }
+
+  // 2. Find optimal bridge route via Li.FI
+  const routes = await lifi.getRoutes({
+    fromChainId: sourceChainId,
+    toChainId: destinationChainId,
+    fromTokenAddress: USDC_ADDRESS,
+    fromAmount: usdcAmount,
+  });
+
+  // 3. Execute bridge for both tokens
+  await lifi.executeRoute(routes[0]); // USDC
+  await lifi.executeRoute({ ...routes[0], fromAmount: usdtAmount }); // USDT
+
+  // Wait for bridge completion
+  await waitForBridgeCompletion(routes[0].id);
+
+  // 4. Create LP on destination chain (Uniswap v4 interaction)
+  const tx = await autoLpHelper.mintLpFromTokens(
+    usdcAmount,
+    usdtAmount,
+    userAddress,
+  );
+
+  const receipt = await tx.wait();
+  const positionId = receipt.events.find((e) => e.event === "LPCreated").args
+    .positionId;
+
+  // 5. Submit claim to receive payment
+  await arbiter.verifyAndClaim(positionId, compactId, AGENT_ADDRESS);
+
+  console.log(
+    `✅ Intent ${compactId} fulfilled, LP created on chain ${destinationChainId}`,
+  );
+});
+```
+
+**When Agent Fulfills**:
+
+- Intent is profitable (revenue > costs)
+- Agent has sufficient capital on source chain
+- Destination chain is supported (Sepolia ↔ Base Sepolia)
+- Li.FI route is available
+
+**When Agent Does NOT Fulfill**:
+
+- Unprofitable intent (costs exceed revenue)
+- Agent capital depleted
+- Unsupported destination chain
+- Li.FI bridge route unavailable
+
+**Uniswap v4 Interactions per Journey**:
+
+1. **Read pool state** (source chain) - `IPoolManager.getSlot0()`
+2. **Read position details** (source chain) - `IPositionManager.getPosition()`
+3. **Decrease liquidity** (source chain) - via `AutoLpHelper.travelToChain()`
+4. **Read pool state** (destination chain) - `IPoolManager.getSlot0()`
+5. **Mint LP position** (destination chain) - `AutoLpHelper.mintLpFromTokens()`
+6. **Read new position** (destination chain) - `IPositionManager.getPosition()`
+
+**Total: 6+ Uniswap v4 interactions per user journey** 🎯
+
+---
+
+### 7. Handle Solver Errors
+
+**Error Types**:
+
+```typescript
+try {
+  await fulfillIntent(intent);
+} catch (error) {
+  if (error.message.includes("LiFi bridge failed")) {
+    // Retry with different route
+    const alternateRoute = routes[1];
+    await lifi.executeRoute(alternateRoute);
+  } else if (error.message.includes("Insufficient capital")) {
+    // Agent needs rebalancing
+    console.error("⚠️ Agent capital depleted on chain", destinationChainId);
+    notifyAdmin("Rebalance needed");
+  } else if (error.message.includes("Claim rejected")) {
+    // Arbiter rejected claim (LP didn't meet conditions)
+    console.error("❌ Claim rejected for intent", compactId);
+    // Agent loses bridged capital (risk of solver role)
+  }
+}
+```
+
+**Agent Economics**:
+
+- Maintains capital float on each chain (e.g., 10 ETH worth)
+- Only fulfills profitable intents (profit > 0.1%)
+- Rebalances liquidity between chains using Li.FI periodically
+- Monitors gas prices to avoid unprofitable execution
 
 ---
 

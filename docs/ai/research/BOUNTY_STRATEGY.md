@@ -40,30 +40,48 @@ User signs an intent → Solver uses Li.FI Composer to bridge → LP appears on 
 
 ### What We're Building
 
-**"Educational DeFi through gamified LP management with deterministic health monitoring"**
+**"Unified agent system managing LP lifecycle with 6+ Uniswap v4 interactions per journey"**
 
-Agent monitors Uniswap v4 LP positions → Calculates health → Updates pet state
+Single agent service with dual responsibilities:
+
+1. **Health Monitoring**: Continuous polling of LP positions
+2. **Intent Fulfillment**: Cross-chain LP migration solver
 
 ### How We Win
 
-✅ **Deep v4 integration**: AutoLpHelper + EggHatchHook + IPoolManager  
-✅ **Agent-driven**: Health monitoring agent with deterministic logic  
+✅ **Deep v4 integration**: AutoLpHelper + EggHatchHook + IPoolManager + PositionManager  
+✅ **Unified agent**: Single service, dual responsibilities (monitoring + solving)  
+✅ **6+ Uniswap interactions per user**: Read pool state, read positions, decrease liquidity, mint LP, verify positions  
 ✅ **Meaningful hooks**: EggHatchHook triggers pet minting on LP creation  
-✅ **Reliability**: Transparent, verifiable health calculations  
-✅ **Educational**: Teaches LP management through gameplay
+✅ **Deterministic logic**: Transparent, verifiable health calculations  
+✅ **Educational value**: Teaches LP management through gameplay
 
 ### Implementation
 
 - **Contracts**: AutoLpHelper.sol, EggHatchHook.sol, PetRegistry.sol
-- **Agent**: `agent/health.ts` for deterministic monitoring
+- **Agent (Unified)**:
+  - `agent/health/` - Continuous LP monitoring via `IPoolManager.getSlot0()`
+  - `agent/solver/` - Intent fulfillment via `AutoLpHelper.mintLpFromTokens()`
 - **Formula**: `health = f(currentTick, tickLower, tickUpper)` - fully deterministic
+
+### Uniswap v4 Interaction Depth
+
+**Per User Journey (Hatch → Travel)**:
+
+1. **Hatch**: Read pool → Create LP → Hook fires → Agent reads position (3 interactions)
+2. **Monitor**: Continuous reads of pool state + position (2+ interactions per cycle)
+3. **Travel**: Read position → Decrease liquidity → Bridge → Mint LP → Verify (5 interactions)
+
+**Total: 6+ direct Uniswap v4 contract calls per user journey** 🎯
 
 ### Demo Talking Points
 
+- "Unified agent demonstrates continuous engagement with Uniswap v4"
+- "Not just creating positions - monitoring, optimizing, and migrating them"
+- "6+ Uniswap v4 interactions per user: reads, writes, hooks"
 - "Hooks automatically mint your axolotl pet when you create LP"
-- "Agent monitors LP health 24/7 using deterministic formula"
+- "Agent uses deterministic formula - all calculations verifiable on-chain"
 - "Learn LP management by keeping your pet healthy"
-- "All calculations verifiable on-chain via events"
 
 ---
 
@@ -72,30 +90,30 @@ Agent monitors Uniswap v4 LP positions → Calculates health → Updates pet sta
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    USER SIGNS TRAVEL INTENT                     │
-│                    (Uniswap v4: Close LP)                       │
+│       (Uniswap v4: Read position → Close LP via agent)         │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   SOLVER USES LI.FI COMPOSER                    │
-│              (Bridge USDC + USDT optimally)                     │
+│              UNIFIED AGENT: INTENT FULFILLMENT                  │
+│              (Li.FI: Bridge USDC + USDT optimally)              │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                 CREATE LP ON DESTINATION                        │
-│                    (Uniswap v4: New LP)                         │
+│         (Uniswap v4: Agent mints LP via AutoLpHelper)          │
 └────────────────────────┬────────────────────────────────────────┘
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              AGENT MONITORS NEW POSITION                        │
-│             (Uniswap v4: Health updates)                        │
+│          UNIFIED AGENT: HEALTH MONITORING RESUMES               │
+│      (Uniswap v4: Continuous reads of new position state)      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **For Li.FI judges**: Focus on the solver's use of Li.FI Composer for optimal bridging  
-**For Uniswap judges**: Focus on the agent-driven health monitoring and hooks integration
+**For Uniswap judges**: Focus on the unified agent's continuous Uniswap v4 interactions (6+ per journey)
 
 ---
 
@@ -197,6 +215,14 @@ Thank you!"
 - ✅ **Multi-step complexity**: Close, bridge, create, settle
 
 ### Uniswap Bounty: Agent-Driven Systems
+
+- ✅ **Continuous monitoring**: Agent polls Uniswap v4 positions every 60s
+- ✅ **Autonomous actions**: Agent creates LP positions via intent fulfillment
+- ✅ **Deep integration**: 6+ Uniswap v4 interactions per user journey
+- ✅ **Meaningful optimization**: Health-driven LP management education
+- ✅ **Reliable logic**: Deterministic calculations (verifiable by anyone)
+- ✅ **Unified architecture**: Single agent, dual responsibilities (monitoring + solving)
+- ✅ **Hook integration**: EggHatchHook + afterAddLiquidity callback
 
 - ✅ **Programmatic interaction**: Agent reads pool state automatically
 - ✅ **Reliability**: Deterministic calculations, no randomness
