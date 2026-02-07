@@ -37,7 +37,7 @@ export const Footer = () => {
           "pointer-events-auto mx-auto max-w-3xl px-4 transition-transform duration-300 ease-out " + sheetClass
         }
       >
-        <div className="bg-base-100 rounded-t-3xl shadow-2xl shadow-secondary/30 border border-base-200">
+        <div className="bg-accent text-primary rounded-t-3xl shadow-2xl shadow-secondary/30 border border-base-200">
           {/* Tab */}
           <button
             type="button"
@@ -46,14 +46,14 @@ export const Footer = () => {
             aria-expanded={open}
             aria-controls="lp-bottom-sheet"
           >
-            <span className="font-della text-base-content">Axo LP</span>
+            <span className="font-della">Axo LP</span>
             <ChevronUpIcon className={"h-5 w-5 transition-transform " + (open ? "rotate-180" : "rotate-0")} />
           </button>
 
           {/* Content */}
           <div id="lp-bottom-sheet" className="px-5 pb-6">
             <div className="flex items-center justify-between gap-4 pb-4">
-              <div className="text-sm text-base-content/70">
+              <div className="text-sm ">
                 LP position details (Uniswap v4 USDC/USDT) — expands from bottom per main-screen spec.
               </div>
               <div className="flex items-center gap-2">
