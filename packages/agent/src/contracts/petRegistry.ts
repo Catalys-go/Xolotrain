@@ -4,6 +4,7 @@
  */
 
 import { Address, PublicClient, WalletClient } from "viem";
+import deployedContracts from "../../../nextjs/contracts/deployedContracts";
 
 export interface Pet {
   owner: Address;
@@ -15,6 +16,12 @@ export interface Pet {
   positionId: bigint;
 }
 
+// Import ABI from auto-generated deployedContracts (single source of truth)
+// Falls back to localhost (31337) deployment - adjust chainId as needed
+export const petRegistryAbi = deployedContracts[31337].PetRegistry.abi;
+
+/* Fallback minimal ABI for PetRegistry agent operations (updated Feb 2026)
+ * Use this if auto-generated ABI is unavailable
 export const petRegistryAbi = [
   // Read functions
   {
@@ -70,11 +77,33 @@ export const petRegistryAbi = [
   // Write functions
   {
     inputs: [
+      { name: "owner", type: "address" },
+      { name: "chainId", type: "uint256" },
+      { name: "poolId", type: "bytes32" },
+      { name: "positionId", type: "uint256" },
+    ],
+    name: "hatchFromHook",
+    outputs: [{ name: "petId", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
       { name: "petId", type: "uint256" },
       { name: "health", type: "uint256" },
       { name: "chainId", type: "uint256" },
     ],
     name: "updateHealth",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "petId", type: "uint256" },
+      { name: "health", type: "uint256" },
+    ],
+    name: "updateHealthManual",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -104,6 +133,7 @@ export const petRegistryAbi = [
     type: "event",
   },
 ] as const;
+*/
 
 /**
  * Read pet data from PetRegistry

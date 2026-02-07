@@ -4,6 +4,7 @@
  */
 
 import { Address, PublicClient } from "viem";
+import externalContracts from "../../../nextjs/contracts/externalContracts";
 
 export interface Position {
   liquidity: bigint;
@@ -13,8 +14,14 @@ export interface Position {
   feeGrowthInside1LastX128: bigint;
 }
 
-// Position Manager ABI (NFT-based positions in v4)
-export const positionManagerAbi = [
+// Import ABI from externalContracts (Uniswap v4 PositionManager is external)
+// Note: Adjust chainId as needed for your deployment
+export const positionManagerAbi =
+  (externalContracts as any)[1]?.IPositionManager?.abi ||
+  ([
+    // Fallback minimal ABI for Uniswap v4 PositionManager (updated Feb 2026)
+    // PositionManager is an ERC721 NFT with position metadata
+    /* Minimal ABI for position reads:
   {
     inputs: [{ name: "tokenId", type: "uint256" }],
     name: "getPositionInfo",
@@ -34,7 +41,15 @@ export const positionManagerAbi = [
     stateMutability: "view",
     type: "function",
   },
-] as const;
+  {
+    inputs: [{ name: "owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  */
+  ] as const);
 
 /**
  * Get position information from NFT tokenId
@@ -49,12 +64,12 @@ export async function getPositionInfo(
   tickUpper: number;
   liquidity: bigint;
 }> {
-  const result = await client.readContract({
+  const result = (await client.readContract({
     address: positionManagerAddress,
     abi: positionManagerAbi,
     functionName: "getPositionInfo",
     args: [tokenId],
-  });
+  })) as [`0x${string}`, bigint, bigint, bigint];
 
   return {
     poolId: result[0],
@@ -72,10 +87,10 @@ export async function getPositionOwner(
   positionManagerAddress: Address,
   tokenId: bigint,
 ): Promise<Address> {
-  return await client.readContract({
+  return (await client.readContract({
     address: positionManagerAddress,
     abi: positionManagerAbi,
     functionName: "ownerOf",
     args: [tokenId],
-  });
+  })) as Address;
 }
