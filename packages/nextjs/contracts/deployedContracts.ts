@@ -659,7 +659,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24399301,
+      deployedOnBlock: 24405748,
     },
     EggHatchHook: {
       address: "0xea0c0cf8b9523e0f73dbe676ad5be79146f28400",
@@ -1600,7 +1600,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24399302,
+      deployedOnBlock: 24405749,
     },
     AutoLpHelper: {
       address: "0x21d9f055b7601f9b5b2e3ac0e2586b3fa5bbd1f3",
@@ -2278,7 +2278,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24399302,
+      deployedOnBlock: 24405749,
     },
   },
 } as const;

@@ -60,29 +60,22 @@
   "8453": {
     "chainName": "base",
     "poolManager": "0x498581ff718922c3f8e6a244956af099b2652b2b",
+    "positionManager": "0x7c5f5a4bbd8fd63184577525326123b519429bdc",
     "ETH_USDC": {
-      "token0": "",
-      "token1": "",
-      "fee": 0,
-      "tickSpacing": 0,
+      "token0": "0x0000000000000000000000000000000000000000",
+      "token1": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "fee": 500,
+      "tickSpacing": 10,
       "hooks": "0x0000000000000000000000000000000000000000",
-      "poolId": ""
-    },
-    "ETH_USDT": {
-      "token0": "",
-      "token1": "",
-      "fee": 0,
-      "tickSpacing": 0,
-      "hooks": "0x0000000000000000000000000000000000000000",
-      "poolId": ""
+      "poolId": "0x96d4b53a38337a5733179751781178a2613306063c511b78cd02684739288c0a"
     },
     "USDC_USDT": {
-      "token0": "",
-      "token1": "",
-      "fee": 0,
-      "tickSpacing": 0,
+      "token0": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+      "token1": "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",
+      "fee": 7,
+      "tickSpacing": 1,
       "hooks": "0x0000000000000000000000000000000000000000",
-      "poolId": ""
+      "poolId": "0xf13203ddbf2c9816a79b656a1a952521702715d92fea465b84ae2ed6e94a7f22"
     }
   }
 }

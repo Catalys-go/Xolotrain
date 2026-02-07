@@ -309,8 +309,8 @@ await writeContractAsync({
 
 **State Changes**:
 
-- Old position closed (liquidity → USDC + USDT → ETH)
-- New position opened (ETH → USDC + USDT → liquidity)
+- Old position closed (liquidity → USDC + USDT)
+- New position opened (USDC + USDT → liquidity)
 - Pet positionId updated
 - Health potentially restored if new range is better
 
