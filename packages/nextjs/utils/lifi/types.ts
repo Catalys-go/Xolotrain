@@ -2,7 +2,6 @@
  * TypeScript Types for Li.FI Integration
  */
 
-// Bridge parameters
 export interface BridgeParams {
   fromChainId: number;
   toChainId: number;
@@ -13,7 +12,6 @@ export interface BridgeParams {
   amount: string;
 }
 
-// Bridge status
 export type BridgeStatus = "idle" | "preparing" | "bridging" | "success" | "error";
 
 export interface BridgeState {
@@ -23,7 +21,6 @@ export interface BridgeState {
   error?: Error;
 }
 
-// LP Recreation parameters (for Composer)
 export interface LPRecreationParams {
   petId: number;
   fromChainId: number;
@@ -35,10 +32,8 @@ export interface LPRecreationParams {
   userAddress: string;
 }
 
-// Li.FI Route Status
 export type RouteStatus = "NOT_FOUND" | "INVALID" | "PENDING" | "DONE" | "FAILED";
 
-// Li.FI Status Response (simplified)
 export interface LiFiStatusResponse {
   status: RouteStatus;
   sending?: {
