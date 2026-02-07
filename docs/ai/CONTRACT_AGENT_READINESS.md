@@ -2,13 +2,32 @@
 
 ## 📋 Executive Summary
 
-This document assesses whether our smart contracts are ready to support the unified agent system (health monitoring + intent fulfillment).
+This document assesses whether our smart contracts are ready to support the AI-enhanced unified agent system (health monitoring + AI advice + intent fulfillment).
 
-**Status**: ⚠️ **Partially Ready** - Health monitoring is ready, but intent fulfillment requires significant additions.
+**Status**: ✅ **READY FOR PHASE 1 (Health Monitoring + AI Advice)** - Contracts deployed and tested on local fork. Intent fulfillment requires additional contract work.
+
+**Last Deployment**: February 6, 2026  
+**Network**: Local mainnet fork (chain ID 31337)  
+**Deployed Contracts**:
+
+- PetRegistry: `0xB288315B51e6FAc212513E1a7C70232fa584Bbb9`
+- EggHatchHook: `0xEa0C0Cf8B9523E0f73dbe676AD5Be79146f28400`
+- AutoLpHelper: `0x21D9f055B7601f9b5B2e3aC0E2586b3FA5BbD1f3`
 
 ---
 
 ## ✅ What's Ready (Health Monitoring)
+
+### Core Contracts - DEPLOYED ✅
+
+**Deployment Details**:
+
+- ✅ All contracts compiled successfully with Solc 0.8.30
+- ✅ Deployed using official Uniswap HookMiner for address mining
+- ✅ All pools verified (ETH_USDC, ETH_USDT, USDC_USDT)
+- ✅ USDC_USDT pool initialized with EggHatchHook at 1:1 price
+- ✅ Contracts connected (PetRegistry.setHook, AutoLpHelper.setPetRegistry)
+- ✅ Frontend ABIs generated
 
 ### PetRegistry.sol - READY ✅
 
@@ -120,7 +139,7 @@ function swapEthToUsdcUsdtAndMint(uint128 minUsdcOut, uint128 minUsdtOut)
 
 **Missing Functions**:
 
-#### 1. `mintLpFromTokens()` - CRITICAL ❌
+#### 1. `mintLpFromTokens()` - Im
 
 **Purpose**: Solver creates LP from pre-bridged USDC/USDT (no ETH swap needed)
 
@@ -316,15 +335,42 @@ StateLibrary.getPosition(poolManager, poolId, positionKey) returns (
 
 ## 📊 Implementation Priority
 
-### Phase 1: Health Monitoring (READY NOW)
+### Phase 1: Health Monitoring + AI Advice (READY TO START)
 
-✅ Can start building agent immediately:
+✅ **Contracts Ready**:
 
-- Read from PetRegistry
-- Calculate health off-chain
-- Call `updateHealth()` (with agent auth disabled for testing)
+- PetRegistry deployed with `updateHealth()` function
+- Agent authorization ready (currently disabled for testing)
+- EggHatchHook deployed and working
+- All pools verified and initialized
+
+🛠️ **Agent Implementation Tasks** (Focus: Health Monitoring Only):
+
+1. **Health Monitoring Service** (1-2 days)
+   - Read from PetRegistry.getAllActivePets()
+   - Query Uniswap v4 IPoolManager for position state
+   - Calculate health deterministically
+   - Call PetRegistry.updateHealth() when health changes ≥5 points
+   - Deploy to cloud (Railway/Render/AWS) -- if needed
+   - Set agent address in PetRegistry
+   - Uncomment onlyAgent modifier
+   - Status: ⚠️ **NOT STARTED**
 
 **Estimated Time**: 1-2 days
+
+🎨 **Frontend Implementation Tasks** (AI Advice - Separate Track):
+
+1. **AI Advice Component** (4-6 hours)
+   - Add Next.js API route: `pages/api/pet/[id]/advice.ts`
+   - Integrate Anthropic Claude Haiku (client-side or API route)
+   - Create "Ask AI" button on pet detail page
+   - Display advice in chat bubble UI
+   - Cost: ~$0.0002 per request, <$5 total for hackathon
+   - Status: ⚠️ **NOT STARTED**
+
+**Estimated Time**: 4-6 hours (can be done in parallel)
+
+**Demo Value**: HIGH - Shows "AI-enhanced agent-driven system" for Uniswap bounty
 
 ---
 
@@ -366,7 +412,7 @@ StateLibrary.getPosition(poolManager, poolId, positionKey) returns (
 
 1. Add `mintLpFromTokens()` to AutoLpHelper
 2. new `TravelManager` contract
-    - Create new tests for both to ensure Agent will work with new contracts
+   - Create new tests for both to ensure Agent will work with new contracts
 3. ✅ Build agent service with health monitoring loop
 4. ✅ Deploy to testnet, monitor real LP positions
 5. ✅ Show working demo: "Agent autonomously updates pet health"
@@ -385,7 +431,7 @@ StateLibrary.getPosition(poolManager, poolId, positionKey) returns (
 ### AutoLpHelper.sol and Travel Manager Changes
 
 ```solidity
-// ADD: New function for solver
+// ADD: New function for solver - COMPLETE
 function mintLpFromTokens(
     uint128 usdcAmount,
     uint128 usdtAmount,
@@ -396,7 +442,7 @@ function mintLpFromTokens(
     // Implementation here
 }
 
-// ADD: New function for intent creation
+// ADD: New function for intent creation - ADDED BUT NEEDS UPDATES FOR LIFI INTEGRATION
 function travelToChain(
     uint256 petId,
     uint256 destinationChainId,
@@ -406,7 +452,7 @@ function travelToChain(
     // Implementation here
 }
 
-// ADD: New event
+// ADD: New event - COMPLETE
 event IntentCreated(
     bytes32 indexed compactId,
     uint256 indexed petId,
@@ -423,7 +469,7 @@ event IntentCreated(
 
 ---
 
-### PetRegistry.sol Changes
+### PetRegistry.sol Changes - COMPLETE
 
 ```solidity
 // MODIFY: Uncomment agent check when ready
@@ -444,9 +490,21 @@ function updateHealth(uint256 petId, uint256 health, uint256 chainId) external {
 - [x] `HealthUpdated` event exists
 - [x] `getActivePetId()` view function exists
 - [x] `getPet()` view function exists
+- [x] PetRegistry deployed on local fork
 - [ ] Deploy agent service
 - [ ] Set agent address in PetRegistry
 - [ ] Uncomment agent authorization check
+
+### For AI Advice Generation (Frontend Only) ✨
+
+- [ ] Install @anthropic-ai/sdk in nextjs package
+- [ ] Add ANTHROPIC_API_KEY to .env.local
+- [ ] Create Next.js API route: `app/api/pet/[id]/advice/route.ts`
+- [ ] Implement generateHealthAdvice() in API route
+- [ ] Add "Ask AI" button to pet detail page
+- [ ] Display advice in chat bubble component
+- [ ] Optional: Add caching (React Query staleTime)
+- [ ] Monitor API costs (<$5 target)
 
 ### For Intent Fulfillment Agent (Solver)
 
@@ -463,33 +521,66 @@ function updateHealth(uint256 petId, uint256 health, uint256 chainId) external {
 
 ## 🎬 Next Steps
 
-### Immediate (Do First)
+### Immediate - Agent Focus (1-2 days)
 
-1. **Decide**: Option A (agent first) or Option B (contracts first)?
-2. **If Option A**: Start building agent health monitoring now
-3. **If Option B**: Implement `mintLpFromTokens()` first
+1. ✅ **Contracts Deployed** - Complete on local fork
+2. ✅ **Agent Service Built** (Phase 1 Complete):
+   - Health monitoring with lifecycle management (start/stop)
+   - Parallel pet processing with Promise.allSettled()
+   - Retry logic with exponential backoff
+   - Clean grouped logging with visual separators
+   - Health status categorization (HEALTHY/ALERT/SAD/CRITICAL)
+   - Gas-optimized transaction submission
+3. 📦 **Deploy Agent** (Next Step):
+   - Set up Railway/Render/AWS
+   - Configure environment variables (RPC URLs only)
+   - Start agent service
+4. 🔗 **Connect Agent**:
+   - Call PetRegistry.setAgent(agentAddress)
+   - Uncomment onlyAgent modifier
+   - Test health updates with real data
+
+### Parallel Track - Frontend AI (4-6 hours)
+
+1. 🎨 **AI Advice in Frontend** (Can be done separately):
+   - Add Next.js API route for Claude Haiku
+   - Add "Ask AI" button to pet detail page
+   - Display advice in chat bubble UI
+   - No dependency on agent service
 
 ### This Week
 
-- Complete missing contract functions
-- Test contract flows with scripts
-- Deploy updated contracts to testnet
+- Complete agent service with health monitoring + AI advice
+- Deploy to testnet
+- Test with real LP positions
+- Show working demo: "AI explains why your axolotl's health changed"
 
-### Next Week
+### Next Week (Phase 2)
 
-- Build complete agent service
-- Integrate Li.FI SDK
-- Deploy agent monitoring service
-- Connect agent to contracts
+- Add missing contract functions for intent fulfillment
+- Integrate Li.FI SDK for cross-chain bridging
+- Connect agent to intent fulfillment
+- (Optional) Add AI-powered tick range optimization
 
 ---
 
 ## 💡 Key Insights
 
-1. **Health Monitoring is Ready** - Can build agent immediately with existing contracts
-2. **Intent Fulfillment Needs Work** - Missing critical functions in AutoLpHelper
-3. **The Compact Integration is Optional** - Can demo without it, use centralized solver initially
-4. **Agent-First Approach Works** - Can show "agent-driven systems" for bounty with just health monitoring
+1. **Contracts Deployed ✅** - All core contracts deployed and tested on local fork
+2. **Health Monitoring Ready** - Can build agent immediately with existing contracts
+3. **Agent = Simple** - Just health monitoring loop, no API server needed
+4. **AI = Frontend Feature** - Claude Haiku integration lives in Next.js, not agent
+5. **Parallel Development** - Agent and AI advice can be built separately (no dependency)
+6. **Intent Fulfillment = Phase 2** - Someone else handling cross-chain (Phase 2)
+7. **2-Day Timeline Achievable** - Agent (1-2 days) + AI frontend (4-6 hours in parallel)
+
+**Deployment Status**:
+
+- ✅ PetRegistry: 0xB288315B51e6FAc212513E1a7C70232fa584Bbb9
+- ✅ EggHatchHook: 0xEa0C0Cf8B9523E0f73dbe676AD5Be79146f28400
+- ✅ AutoLpHelper: 0x21D9f055B7601f9b5B2e3aC0E2586b3FA5BbD1f3
+- ✅ All pools verified and initialized
+- ✅ Hook properly integrated with USDC_USDT pool
 
 ---
 
@@ -502,5 +593,10 @@ function updateHealth(uint256 petId, uint256 health, uint256 chainId) external {
 
 ---
 
-**Last Updated**: February 5, 2026  
-**Status**: ⚠️ Contracts partially ready, health monitoring can start now, intent fulfillment needs contract additions
+**Last Updated**: February 6, 2026  
+**Status**: ✅ **Phase 1 Ready** - Contracts deployed, agent can start immediately (1-2 days).
+
+**Agent Scope**: Health monitoring ONLY (blockchain reads/writes)  
+**AI Scope**: Frontend feature (Next.js API routes)  
+**Timeline**: 2 days for agent, AI can be added in parallel  
+**Deployment Network**: Local mainnet fork (31337)
