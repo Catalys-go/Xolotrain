@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
 import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {BalanceDeltaLibrary} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
@@ -19,6 +19,10 @@ import {LiquidityAmounts} from "@uniswap/v4-periphery/src/libraries/LiquidityAmo
 import {Actions} from "@uniswap/v4-periphery/src/libraries/Actions.sol";
 import {CalldataDecoder} from "@uniswap/v4-periphery/src/libraries/CalldataDecoder.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 // Simple interface for PetRegistry - avoids circular dependency
 interface PetRegistry {
@@ -29,21 +33,28 @@ interface PetRegistry {
         uint256 lastUpdate,
         uint256 chainId,
         bytes32 poolId,
-        uint256 positionId
+        uint256 positionId,
+        int24 tickLower,
+        int24 tickUpper
     );
 }
 
 /// @title AutoLpHelper
 /// @notice Atomically swaps ETH to USDC/USDT and creates NFT-based LP position in one transaction
 /// @dev Uses IUnlockCallback pattern + PositionManager for user-owned positions
-contract AutoLpHelper is IUnlockCallback {
+contract AutoLpHelper is IUnlockCallback, ReentrancyGuard, Ownable {
     using CalldataDecoder for bytes;
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
+    using SafeERC20 for IERC20;
+    using SafeCast for int256;
+    using SafeCast for uint256;
 
     error ZeroInput();
     error UnauthorizedCaller();
     error InsufficientOutput(uint256 expected, uint256 actual);
+    error PositionAlreadyBurned();
+    error InsufficientLiquidity(uint128 actual);
 
     event LiquidityAdded(
         address indexed owner,
@@ -57,25 +68,20 @@ contract AutoLpHelper is IUnlockCallback {
         uint256 timestamp
     );
 
-    event IntentCreated(
-        bytes32 indexed compactId,
+    event TravelInitiated(
         uint256 indexed petId,
-        address indexed user,
-        uint256 sourceChainId,
+        address indexed owner,
         uint256 destinationChainId,
         uint128 usdcAmount,
-        uint128 usdtAmount,
-        int24 tickLower,
-        int24 tickUpper,
         uint256 timestamp
     );
 
-    event LPCreatedFromIntent(
-        bytes32 indexed compactId,
-        uint256 indexed positionId,
-        address indexed solver,
-        uint256 chainId,
-        uint128 liquidity,
+    event LiquidityRemoved(
+        uint256 indexed petId,
+        address indexed owner,
+        uint128 usdcAmount,
+        uint128 usdtAmount,
+        uint128 totalUsdcOut,
         uint256 timestamp
     );
 
@@ -84,6 +90,9 @@ contract AutoLpHelper is IUnlockCallback {
     
     // Reference to PetRegistry for ownership verification
     address public petRegistry;
+    
+    // Position nonce for collision-resistant ID generation
+    uint256 private positionNonce;
     
     PoolKey public ethUsdcPoolKey;
     PoolKey public ethUsdtPoolKey;
@@ -127,6 +136,18 @@ contract AutoLpHelper is IUnlockCallback {
         int24 tickLower;
         int24 tickUpper;
         address recipient;
+        uint128 minUsdtOut; // Minimum USDT from swap (slippage protection)
+    }
+
+    struct BurnAndSwapToUsdcParams {
+        bool isBurn; // Discriminator 1: true for burn operations
+        bool isBurnSecond; // Discriminator 2: true (padding for unique signature)
+        uint256 petId; // Pet ID for tracking
+        bytes32 salt; // Position salt for burning
+        int24 tickLower; // Position tick lower bound
+        int24 tickUpper; // Position tick upper bound
+        uint128 minUsdcOut; // Minimum USDC output (slippage protection)
+        address usdcRecipient; // Address to receive USDC
     }
 
     constructor(
@@ -137,8 +158,9 @@ contract AutoLpHelper is IUnlockCallback {
         PoolKey memory _usdcUsdtPoolKey,
         int24 _tickSpacing,
         int24 _tickLowerOffset,
-        int24 _tickUpperOffset
-    ) {
+        int24 _tickUpperOffset,
+        address initialOwner
+    ) Ownable(initialOwner) {
         POOL_MANAGER = _poolManager;
         POSM = _posm;
         ethUsdcPoolKey = _ethUsdcPoolKey;
@@ -151,7 +173,7 @@ contract AutoLpHelper is IUnlockCallback {
 
     /// @notice Set the PetRegistry address (callable only once during setup)
     /// @param _petRegistry Address of the deployed PetRegistry contract
-    function setPetRegistry(address _petRegistry) external {
+    function setPetRegistry(address _petRegistry) external onlyOwner {
         require(petRegistry == address(0), "Registry already set");
         require(_petRegistry != address(0), "Invalid registry");
         petRegistry = _petRegistry;
@@ -170,6 +192,8 @@ contract AutoLpHelper is IUnlockCallback {
         returns (uint128 liquidity)
     {
         if (msg.value == 0) revert ZeroInput();
+        // Sanity check: prevent 100% slippage (require at least 50% of expected value)
+        require(minUsdcOut > 0 && minUsdtOut > 0, "Zero slippage not allowed");
 
         // Calculate swap amounts
         uint128 half = uint128(msg.value / 2);
@@ -241,8 +265,8 @@ contract AutoLpHelper is IUnlockCallback {
         Currency usdcCurrency = usdcUsdtPoolKey.currency0;
         Currency usdtCurrency = usdcUsdtPoolKey.currency1;
         
-        IERC20(Currency.unwrap(usdcCurrency)).transferFrom(msg.sender, address(this), usdcAmount);
-        IERC20(Currency.unwrap(usdtCurrency)).transferFrom(msg.sender, address(this), usdtAmount);
+        IERC20(Currency.unwrap(usdcCurrency)).safeTransferFrom(msg.sender, address(this), usdcAmount);
+        IERC20(Currency.unwrap(usdtCurrency)).safeTransferFrom(msg.sender, address(this), usdtAmount);
 
         MintFromTokensParams memory params = MintFromTokensParams({
             isSwapAndMint: false,
@@ -280,13 +304,15 @@ contract AutoLpHelper is IUnlockCallback {
     /// @param tickLower Lower tick boundary of the LP range
     /// @param tickUpper Upper tick boundary of the LP range
     /// @param recipient Address to receive the position NFT
+    /// @param minUsdtOut Minimum USDT to receive from swap (slippage protection)
     /// @return positionId The unique ID of the created LP position
     function mintLpFromUsdcOnly(
         uint256 petId,
         uint256 usdcAmount,
         int24 tickLower,
         int24 tickUpper,
-        address recipient
+        address recipient,
+        uint128 minUsdtOut
     ) external returns (uint256 positionId) {
         if (usdcAmount == 0) revert ZeroInput();
         if (recipient == address(0)) revert UnauthorizedCaller();
@@ -295,7 +321,7 @@ contract AutoLpHelper is IUnlockCallback {
         tickUpper = _alignTick(tickUpper);
 
         Currency usdcCurrency = usdcUsdtPoolKey.currency0;
-        IERC20(Currency.unwrap(usdcCurrency)).transferFrom(msg.sender, address(this), usdcAmount);
+        IERC20(Currency.unwrap(usdcCurrency)).safeTransferFrom(msg.sender, address(this), usdcAmount);
 
         MintFromUsdcOnlyParams memory params = MintFromUsdcOnlyParams({
             isSwapAndMint: false,
@@ -304,7 +330,8 @@ contract AutoLpHelper is IUnlockCallback {
             usdcAmount: usdcAmount,
             tickLower: tickLower,
             tickUpper: tickUpper,
-            recipient: recipient
+            recipient: recipient,
+            minUsdtOut: minUsdtOut
         });
 
         bytes memory result = POOL_MANAGER.unlock(abi.encode(params));
@@ -325,22 +352,38 @@ contract AutoLpHelper is IUnlockCallback {
     }
 
     /// @notice Callback function called by PoolManager.unlock()
-    /// @dev All swaps and LP minting happen atomically here
-    function unlockCallback(bytes calldata data) external returns (bytes memory) {
+    /// @dev All swaps and LP minting/burning happen atomically here
+    /// @dev Discriminator routing (first two bools):
+    ///      - (true, false)  → SwapAndMintParams
+    ///      - (true, true)   → BurnAndSwapToUsdcParams
+    ///      - (false, false) → MintFromTokensParams
+    ///      - (false, true)  → MintFromUsdcOnlyParams
+    function unlockCallback(bytes calldata data) external nonReentrant returns (bytes memory) {
         if (msg.sender != address(POOL_MANAGER)) revert UnauthorizedCaller();
 
-        // Decode discriminators to route to correct handler
-        (bool isSwapAndMint, bool isSingleToken) = abi.decode(data, (bool, bool));
-
-        if (isSwapAndMint) {
-            SwapAndMintParams memory params = abi.decode(data, (SwapAndMintParams));
-            return _handleSwapAndMint(params);
-        } else if (isSingleToken) {
-            MintFromUsdcOnlyParams memory params = abi.decode(data, (MintFromUsdcOnlyParams));
-            return _handleMintFromUsdcOnly(params);
+        // Decode two discriminator bools for routing
+        (bool firstDiscriminator, bool secondDiscriminator) = abi.decode(data, (bool, bool));
+        
+        if (firstDiscriminator) {
+            if (secondDiscriminator) {
+                // (true, true) → BurnAndSwapToUsdc
+                BurnAndSwapToUsdcParams memory params = abi.decode(data, (BurnAndSwapToUsdcParams));
+                return _handleBurnAndSwapToUsdc(params);
+            } else {
+                // (true, false) → SwapAndMint
+                SwapAndMintParams memory params = abi.decode(data, (SwapAndMintParams));
+                return _handleSwapAndMint(params);
+            }
         } else {
-            MintFromTokensParams memory params = abi.decode(data, (MintFromTokensParams));
-            return _handleMintFromTokens(params);
+            if (secondDiscriminator) {
+                // (false, true) → MintFromUsdcOnly
+                MintFromUsdcOnlyParams memory params = abi.decode(data, (MintFromUsdcOnlyParams));
+                return _handleMintFromUsdcOnly(params);
+            } else {
+                // (false, false) → MintFromTokens
+                MintFromTokensParams memory params = abi.decode(data, (MintFromTokensParams));
+                return _handleMintFromTokens(params);
+            }
         }
     }
 
@@ -373,9 +416,9 @@ contract AutoLpHelper is IUnlockCallback {
         require(delta1.amount1() > 0, "Invalid USDC swap delta");
         require(delta2.amount1() > 0, "Invalid USDT swap delta");
         
-        // Safe casting after validation
-        uint128 usdcReceived = uint128(delta1.amount1());
-        uint128 usdtReceived = uint128(delta2.amount1());
+        // Safe casting with bounds check (int128 → int256 → uint256 → uint128)
+        uint128 usdcReceived = int256(delta1.amount1()).toUint256().toUint128();
+        uint128 usdtReceived = int256(delta2.amount1()).toUint256().toUint128();
         
         if (usdcReceived < params.minUsdcOut) {
             revert InsufficientOutput(params.minUsdcOut, usdcReceived);
@@ -393,6 +436,9 @@ contract AutoLpHelper is IUnlockCallback {
             usdcReceived,
             usdtReceived
         );
+        
+        // Validate non-zero liquidity
+        if (liquidity == 0) revert InsufficientLiquidity(0);
 
         // Step 4: Create LP position via PoolManager
         // NOTE: Position is technically owned by this contract in PoolManager,
@@ -403,12 +449,13 @@ contract AutoLpHelper is IUnlockCallback {
         // This approach maintains atomicity and works within unlock callback constraints.
         // For full PositionManager NFT integration, would require multi-transaction flow.
         
-        // Create unique position ID for this user
+        // Create collision-resistant position ID using nonce
         uint256 positionId = uint256(keccak256(abi.encodePacked(
             params.recipient,
             params.tickLower,
             params.tickUpper,
-            block.timestamp
+            block.timestamp,
+            ++positionNonce
         )));
         
         bytes32 salt = bytes32(positionId);
@@ -439,7 +486,7 @@ contract AutoLpHelper is IUnlockCallback {
         // Settle ETH debt from both swaps (negative deltas)
         require(delta1.amount0() < 0, "Expected negative ETH delta from swap1");
         require(delta2.amount0() < 0, "Expected negative ETH delta from swap2");
-        uint128 totalEthOwed = uint128(-delta1.amount0()) + uint128(-delta2.amount0());
+        uint128 totalEthOwed = int256(-delta1.amount0()).toUint256().toUint128() + int256(-delta2.amount0()).toUint256().toUint128();
         POOL_MANAGER.settle{value: totalEthOwed}();
         
         // Calculate net deltas for USDC and USDT
@@ -455,11 +502,11 @@ contract AutoLpHelper is IUnlockCallback {
             // We owe USDC - take from swap, then sync/transfer/settle
             POOL_MANAGER.take(usdcCurrency, address(this), usdcReceived);
             POOL_MANAGER.sync(usdcCurrency);
-            IERC20(Currency.unwrap(usdcCurrency)).transfer(address(POOL_MANAGER), uint128(-netUsdcDelta));
+            IERC20(Currency.unwrap(usdcCurrency)).safeTransfer(address(POOL_MANAGER), int256(-netUsdcDelta).toUint256().toUint128());
             POOL_MANAGER.settle();
         } else if (netUsdcDelta > 0) {
             // We're owed USDC - take it and send to user
-            POOL_MANAGER.take(usdcCurrency, params.recipient, uint128(netUsdcDelta));
+            POOL_MANAGER.take(usdcCurrency, params.recipient, int256(netUsdcDelta).toUint256().toUint128());
         }
         // If zero, deltas perfectly netted
         
@@ -468,11 +515,11 @@ contract AutoLpHelper is IUnlockCallback {
             // We owe USDT - take from swap, then sync/transfer/settle
             POOL_MANAGER.take(usdtCurrency, address(this), usdtReceived);
             POOL_MANAGER.sync(usdtCurrency);
-            IERC20(Currency.unwrap(usdtCurrency)).transfer(address(POOL_MANAGER), uint128(-netUsdtDelta));
+            IERC20(Currency.unwrap(usdtCurrency)).safeTransfer(address(POOL_MANAGER), int256(-netUsdtDelta).toUint256().toUint128());
             POOL_MANAGER.settle();
         } else if (netUsdtDelta > 0) {
             // We're owed USDT - take it and send to user
-            POOL_MANAGER.take(usdtCurrency, params.recipient, uint128(netUsdtDelta));
+            POOL_MANAGER.take(usdtCurrency, params.recipient, int256(netUsdtDelta).toUint256().toUint128());
         }
         // If zero, deltas perfectly netted
 
@@ -494,13 +541,17 @@ contract AutoLpHelper is IUnlockCallback {
             params.usdcAmount,
             params.usdtAmount
         );
+        
+        // Validate non-zero liquidity
+        if (liquidity == 0) revert InsufficientLiquidity(0);
 
-        // Step 2: Create unique position ID
+        // Step 2: Create collision-resistant position ID
         uint256 positionId = uint256(keccak256(abi.encodePacked(
             params.recipient,
             params.tickLower,
             params.tickUpper,
-            block.timestamp
+            block.timestamp,
+            ++positionNonce
         )));
         
         bytes32 salt = bytes32(positionId);
@@ -531,31 +582,30 @@ contract AutoLpHelper is IUnlockCallback {
         require(delta.amount0() < 0, "Expected negative USDC delta");
         require(delta.amount1() < 0, "Expected negative USDT delta");
         
-        uint128 usdcOwed = uint128(-delta.amount0());
-        uint128 usdtOwed = uint128(-delta.amount1());
+        uint128 usdcOwed = int256(-delta.amount0()).toUint256().toUint128();
+        uint128 usdtOwed = int256(-delta.amount1()).toUint256().toUint128();
 
         // Settle USDC: sync → transfer → settle
         POOL_MANAGER.sync(usdcCurrency);
-        IERC20(Currency.unwrap(usdcCurrency)).transfer(address(POOL_MANAGER), usdcOwed);
+        IERC20(Currency.unwrap(usdcCurrency)).safeTransfer(address(POOL_MANAGER), usdcOwed);
         POOL_MANAGER.settle();
 
         // Settle USDT: sync → transfer → settle  
         POOL_MANAGER.sync(usdtCurrency);
-        IERC20(Currency.unwrap(usdtCurrency)).transfer(address(POOL_MANAGER), usdtOwed);
+        IERC20(Currency.unwrap(usdtCurrency)).safeTransfer(address(POOL_MANAGER), usdtOwed);
         POOL_MANAGER.settle();
 
-        // Return any leftover tokens to the original caller (solver)
-        // Note: Leftover tokens are already in this contract from the initial transferFrom
+        // Return any leftover tokens to the recipient
+        // Note: Leftover tokens are in this contract from the initial transferFrom
         uint128 usdcLeftover = params.usdcAmount - usdcOwed;
         uint128 usdtLeftover = params.usdtAmount - usdtOwed;
         
         if (usdcLeftover > 0) {
-            // Transfer back to the external caller (who called mintLpFromTokens)
-            // Not msg.sender here because we're in unlock callback
-            POOL_MANAGER.take(usdcCurrency, params.recipient, usdcLeftover);
+            // Transfer back to recipient using ERC20 transfer (not take - these are in this contract)
+            IERC20(Currency.unwrap(usdcCurrency)).safeTransfer(params.recipient, usdcLeftover);
         }
         if (usdtLeftover > 0) {
-            POOL_MANAGER.take(usdtCurrency, params.recipient, usdtLeftover);
+            IERC20(Currency.unwrap(usdtCurrency)).safeTransfer(params.recipient, usdtLeftover);
         }
 
         return abi.encode(liquidity, positionId);
@@ -583,14 +633,19 @@ contract AutoLpHelper is IUnlockCallback {
         );
 
         require(swapDelta.amount1() > 0, "Invalid USDT swap delta");
-        uint128 usdtReceived = uint128(swapDelta.amount1());
+        uint128 usdtReceived = int256(swapDelta.amount1()).toUint256().toUint128();
+        
+        // Validate slippage protection
+        if (usdtReceived < params.minUsdtOut) {
+            revert InsufficientOutput(params.minUsdtOut, usdtReceived);
+        }
 
         // Step 3: Settle swap - pay USDC debt
         require(swapDelta.amount0() < 0, "Expected negative USDC delta");
-        uint128 usdcOwed = uint128(-swapDelta.amount0());
+        uint128 usdcOwed = int256(-swapDelta.amount0()).toUint256().toUint128();
         
         POOL_MANAGER.sync(usdcCurrency);
-        IERC20(Currency.unwrap(usdcCurrency)).transfer(address(POOL_MANAGER), usdcOwed);
+        IERC20(Currency.unwrap(usdcCurrency)).safeTransfer(address(POOL_MANAGER), usdcOwed);
         POOL_MANAGER.settle();
         
         // Take USDT from pool
@@ -605,13 +660,17 @@ contract AutoLpHelper is IUnlockCallback {
             remainingUsdc,
             usdtReceived
         );
+        
+        // Validate non-zero liquidity
+        if (liquidity == 0) revert InsufficientLiquidity(0);
 
-        // Step 5: Create unique position ID
+        // Step 5: Create collision-resistant position ID
         uint256 positionId = uint256(keccak256(abi.encodePacked(
             params.recipient,
             params.tickLower,
             params.tickUpper,
-            block.timestamp
+            block.timestamp,
+            ++positionNonce
         )));
         
         bytes32 salt = bytes32(positionId);
@@ -641,17 +700,17 @@ contract AutoLpHelper is IUnlockCallback {
         require(lpDelta.amount0() < 0, "Expected negative USDC delta");
         require(lpDelta.amount1() < 0, "Expected negative USDT delta");
         
-        uint128 usdcNeeded = uint128(-lpDelta.amount0());
-        uint128 usdtNeeded = uint128(-lpDelta.amount1());
+        uint128 usdcNeeded = int256(-lpDelta.amount0()).toUint256().toUint128();
+        uint128 usdtNeeded = int256(-lpDelta.amount1()).toUint256().toUint128();
 
         // Settle USDC
         POOL_MANAGER.sync(usdcCurrency);
-        IERC20(Currency.unwrap(usdcCurrency)).transfer(address(POOL_MANAGER), usdcNeeded);
+        IERC20(Currency.unwrap(usdcCurrency)).safeTransfer(address(POOL_MANAGER), usdcNeeded);
         POOL_MANAGER.settle();
 
         // Settle USDT
         POOL_MANAGER.sync(usdtCurrency);
-        IERC20(Currency.unwrap(usdtCurrency)).transfer(address(POOL_MANAGER), usdtNeeded);
+        IERC20(Currency.unwrap(usdtCurrency)).safeTransfer(address(POOL_MANAGER), usdtNeeded);
         POOL_MANAGER.settle();
 
         // Step 8: Return any leftover tokens to recipient
@@ -659,114 +718,169 @@ contract AutoLpHelper is IUnlockCallback {
         uint128 usdtLeftover = usdtReceived > usdtNeeded ? usdtReceived - usdtNeeded : 0;
         
         if (usdcLeftover > 0) {
-            POOL_MANAGER.take(usdcCurrency, params.recipient, usdcLeftover);
+            // Transfer leftover USDC (it's in this contract, not PoolManager)
+            IERC20(Currency.unwrap(usdcCurrency)).safeTransfer(params.recipient, usdcLeftover);
         }
         if (usdtLeftover > 0) {
-            POOL_MANAGER.take(usdtCurrency, params.recipient, usdtLeftover);
+            // Transfer leftover USDT (it's in this contract, not PoolManager)
+            IERC20(Currency.unwrap(usdtCurrency)).safeTransfer(params.recipient, usdtLeftover);
         }
 
         return abi.encode(liquidity, positionId);
     }
 
+    /// @dev Handle burn LP position and swap all to USDC
+    /// @notice Burns existing LP position and converts all tokens to USDC atomically
+    function _handleBurnAndSwapToUsdc(BurnAndSwapToUsdcParams memory params) internal returns (bytes memory) {
+        Currency usdcCurrency = usdcUsdtPoolKey.currency0;
+        Currency usdtCurrency = usdcUsdtPoolKey.currency1;
 
-    /// @notice Initiate cross-chain LP migration via intent-based system
-    /// @dev Creates an intent for solver to fulfill. User's LP is closed on source chain,
-    ///      tokens are held in escrow, and solver recreates LP on destination chain.
-    ///      This is Phase 1 (MVP): Intent creation without The Compact integration.
-    ///      Phase 2 will add The Compact for trustless settlement.
+        // Step 1: Get current liquidity from position
+        PoolId poolId = usdcUsdtPoolKey.toId();
+        bytes32 positionId = keccak256(abi.encodePacked(address(this), params.tickLower, params.tickUpper, params.salt));
+        uint128 liquidity = StateLibrary.getPositionLiquidity(POOL_MANAGER, poolId, positionId);
+        
+        // Step 2: Validate position exists and has liquidity
+        if (liquidity == 0) revert PositionAlreadyBurned();
+
+        // Step 3: Burn the position (remove all liquidity)
+        (BalanceDelta burnDelta,) = POOL_MANAGER.modifyLiquidity(
+            usdcUsdtPoolKey,
+            ModifyLiquidityParams({
+                tickLower: params.tickLower,
+                tickUpper: params.tickUpper,
+                liquidityDelta: -int256(uint256(liquidity)),
+                salt: params.salt
+            }),
+            bytes("") // No hook data needed for burning
+        );
+
+        // Step 4: Take USDC and USDT from pool (deltas are positive when removing liquidity)
+        require(burnDelta.amount0() > 0, "Expected positive USDC delta");
+        require(burnDelta.amount1() > 0, "Expected positive USDT delta");
+        
+        uint128 usdcReceived = int256(burnDelta.amount0()).toUint256().toUint128();
+        uint128 usdtReceived = int256(burnDelta.amount1()).toUint256().toUint128();
+        
+        // Take tokens to this contract for swapping
+        POOL_MANAGER.take(usdcCurrency, address(this), usdcReceived);
+        POOL_MANAGER.take(usdtCurrency, address(this), usdtReceived);
+
+        // Step 5: Swap all USDT → USDC
+        BalanceDelta swapDelta = POOL_MANAGER.swap(
+            usdcUsdtPoolKey,
+            SwapParams({
+                zeroForOne: false, // USDT (token1) → USDC (token0)
+                amountSpecified: -int256(uint256(usdtReceived)),
+                sqrtPriceLimitX96: TickMath.MAX_SQRT_PRICE - 1
+            }),
+            bytes("")
+        );
+
+        require(swapDelta.amount0() > 0, "Invalid USDC swap output");
+        uint128 usdcFromSwap = int256(swapDelta.amount0()).toUint256().toUint128();
+        
+        // Step 6: Calculate total USDC and validate against minimum
+        uint128 totalUsdc = usdcReceived + usdcFromSwap;
+        if (totalUsdc < params.minUsdcOut) {
+            revert InsufficientOutput(params.minUsdcOut, totalUsdc);
+        }
+
+        // Step 7: Settle swap deltas
+        // Swap gave us USDC (positive), we owe USDT (negative)
+        require(swapDelta.amount1() < 0, "Expected negative USDT delta");
+        uint128 usdtOwed = int256(-swapDelta.amount1()).toUint256().toUint128();
+        
+        // Settle USDT debt
+        POOL_MANAGER.sync(usdtCurrency);
+        IERC20(Currency.unwrap(usdtCurrency)).safeTransfer(address(POOL_MANAGER), usdtOwed);
+        POOL_MANAGER.settle();
+        
+        // Take USDC from swap and send all USDC to recipient
+        POOL_MANAGER.take(usdcCurrency, params.usdcRecipient, totalUsdc);
+
+        // Step 8: Emit event for off-chain tracking
+        emit LiquidityRemoved(
+            params.petId,
+            params.usdcRecipient,
+            usdcReceived,
+            usdtReceived,
+            totalUsdc,
+            block.timestamp
+        );
+
+        return abi.encode(totalUsdc);
+    }
+
+
+    /// @notice Initiate cross-chain LP migration by burning position and converting to USDC
+    /// @dev Burns LP position, swaps all tokens to USDC, and returns USDC to user for Li.FI bridging
     /// @param petId The ID of the pet to migrate (must be owned by msg.sender)
     /// @param destinationChainId Target chain ID where LP will be recreated
-    /// @param tickLower Lower tick for the new LP position on destination chain
-    /// @param tickUpper Upper tick for the new LP position on destination chain
-    /// @return compactId Unique identifier for tracking this travel intent
+    /// @param minUsdcOut Minimum USDC to receive after burning and swapping (slippage protection)
+    /// @return totalUsdc Total USDC amount returned to user for bridging
     function travelToChain(
         uint256 petId,
         uint256 destinationChainId,
-        int24 tickLower,
-        int24 tickUpper
-    ) external returns (bytes32 compactId) {
-        // 1. Verify msg.sender owns the pet (read from PetRegistry)
+        uint128 minUsdcOut
+    ) external returns (uint128 totalUsdc) {
+        // 1. Verify PetRegistry is set and pet exists
         require(petRegistry != address(0), "Registry not set");
         
-        // Read pet data from registry
-        (address owner, , , , uint256 chainId, , uint256 positionId) = 
-            PetRegistry(petRegistry).pets(petId);
+        // 2. Read pet data from registry
+        (
+            address owner,
+            ,
+            ,
+            ,
+            uint256 chainId,
+            ,
+            uint256 positionId,
+            int24 tickLower,
+            int24 tickUpper
+        ) = PetRegistry(petRegistry).pets(petId);
         
+        // 3. Validate ownership and state
         require(owner == msg.sender, "Not pet owner");
         require(chainId == block.chainid, "Pet not on this chain");
         require(positionId != 0, "No active position");
+        require(destinationChainId != block.chainid, "Cannot travel to same chain");
         
-        // 2. Close existing LP position → get USDC/USDT amounts
-        // Note: In MVP, we simulate closing the position by reading the expected amounts
-        // A full implementation would call PositionManager to decrease liquidity to zero
-        // and collect the underlying tokens. For now, we'll calculate expected amounts.
+        // 4. Construct burn parameters
+        BurnAndSwapToUsdcParams memory params = BurnAndSwapToUsdcParams({
+            isBurn: true,
+            isBurnSecond: true, // Discriminator padding for (true, true) signature
+            petId: petId,
+            salt: bytes32(positionId),
+            tickLower: tickLower,
+            tickUpper: tickUpper,
+            minUsdcOut: minUsdcOut,
+            usdcRecipient: msg.sender
+        });
         
-        // Get the currencies from the pool
-        Currency usdcCurrency = usdcUsdtPoolKey.currency0;
-        Currency usdtCurrency = usdcUsdtPoolKey.currency1;
+        // 5. Execute burn and swap atomically via unlock callback
+        bytes memory result = POOL_MANAGER.unlock(abi.encode(params));
+        totalUsdc = abi.decode(result, (uint128));
         
-        // TODO: Implement actual position closing via PositionManager
-        // For MVP, assume user has approved and we can transfer their existing balance
-        // In production, this would:
-        //   1. Call POSM.modifyLiquidities() to decrease liquidity to 0
-        //   2. Collect tokens from the position
-        //   3. Get actual USDC/USDT amounts returned
-        
-        // Placeholder amounts - in production these come from closing the position
-        uint128 usdcAmount = 1000e6; // 1000 USDC (6 decimals)
-        uint128 usdtAmount = 1000e6; // 1000 USDT (6 decimals)
-        
-        // 3. Approve The Compact to spend USDC/USDT
-        // Note: In MVP Phase 1, we skip The Compact integration
-        // Tokens remain in this contract as a trust assumption
-        // Phase 2 will deposit into The Compact for trustless settlement
-        
-        // Transfer tokens from user to this contract (escrow)
-        IERC20(Currency.unwrap(usdcCurrency)).transferFrom(msg.sender, address(this), usdcAmount);
-        IERC20(Currency.unwrap(usdtCurrency)).transferFrom(msg.sender, address(this), usdtAmount);
-        
-        // 4. Call TheCompact.registerMultichainIntent(...)
-        // TODO: Phase 2 - Integrate with The Compact
-        // For now, we create a simple intent ID and rely on off-chain solver
-        // In production:
-        //   1. Approve The Compact to spend tokens
-        //   2. Call TheCompact.deposit() to create resource locks
-        //   3. Call TheCompact.register() with multichain compact details
-        //   4. Store the returned compactId for tracking
-        
-        // Generate deterministic intent ID
-        compactId = keccak256(abi.encodePacked(
-            msg.sender,
-            petId,
-            block.chainid,
-            destinationChainId,
-            usdcAmount,
-            usdtAmount,
-            tickLower,
-            tickUpper,
-            block.timestamp
-        ));
-        
-        // 5. Emit IntentCreated event
-        emit IntentCreated(
-            compactId,
+        // 6. Emit travel event for off-chain tracking
+        emit TravelInitiated(
             petId,
             msg.sender,
-            block.chainid,
             destinationChainId,
-            usdcAmount,
-            usdtAmount,
-            tickLower,
-            tickUpper,
+            totalUsdc,
             block.timestamp
         );
         
-        // 6. Return compactId for tracking
-        return compactId;
+        // 7. Return USDC amount for user to bridge via Li.FI
+        return totalUsdc;
     }
 
     /// @notice Quote the expected USDC and USDT output for a given ETH input
-    /// @dev Call this before swapEthToUsdcUsdtAndMint to get accurate minimum output values
+    /// @dev APPROXIMATION ONLY - actual output may differ due to:
+    ///      - Price impact from large trades
+    ///      - Tick crossings during swap
+    ///      - Actual pool fee (currently assumes 0.5%)
+    ///      Use quote as estimate, add slippage buffer (e.g., 2-5%)
     /// @param ethAmount The amount of ETH to swap
     /// @return usdcOut Expected USDC output (with 6 decimals)
     /// @return usdtOut Expected USDT output (with 6 decimals)
@@ -793,6 +907,99 @@ contract AutoLpHelper is IUnlockCallback {
             true, // zeroForOne (ETH → USDT)
             remainder
         );
+    }
+
+    /// @notice Quote the expected USDC output from burning a pet's LP position
+    /// @dev ⚠️ APPROXIMATION ONLY - actual output may differ due to:
+    ///      - Price impact from swaps (±0.1-3% depending on size)
+    ///      - Precision limitations in fixed-point arithmetic (±0.01%)
+    ///      - Pool fee application during USDT→USDC swap
+    ///      - Slippage and MEV during execution
+    ///      
+    ///      ALWAYS add 2-5% safety buffer when setting minUsdcOut in travelToChain.
+    ///      Example: quote = 100 USDC → set minUsdcOut = 95-98 USDC.
+    ///      
+    ///      Uses Uniswap's canonical LiquidityAmounts library for accurate calculations.
+    /// @param petId The pet ID to quote
+    /// @return totalUsdcEstimate Estimated total USDC after burning position and swapping
+    function quoteLiquidityBurn(uint256 petId) 
+        external 
+        view 
+        returns (uint128 totalUsdcEstimate) 
+    {
+        require(petRegistry != address(0), "Registry not set");
+        
+        // Read pet data from registry
+        (
+            address owner,
+            ,
+            ,
+            ,
+            uint256 chainId,
+            ,
+            uint256 positionId,
+            int24 tickLower,
+            int24 tickUpper
+        ) = PetRegistry(petRegistry).pets(petId);
+        
+        // Validate pet exists
+        require(owner != address(0), "Pet not found");
+        require(chainId == block.chainid, "Pet not on this chain");
+        require(positionId != 0, "No active position");
+        
+        // Get current liquidity from position
+        PoolId poolId = usdcUsdtPoolKey.toId();
+        bytes32 posId = keccak256(abi.encodePacked(address(this), tickLower, tickUpper, bytes32(positionId)));
+        uint128 liquidity = StateLibrary.getPositionLiquidity(POOL_MANAGER, poolId, posId);
+        
+        if (liquidity == 0) return 0;
+        
+        // Get current pool state and validate initialization
+        (uint160 sqrtPrice,,,) = StateLibrary.getSlot0(POOL_MANAGER, poolId);
+        require(sqrtPrice > 0, "Pool not initialized");
+        
+        // Calculate tick prices
+        uint160 sqrtPriceAX96 = TickMath.getSqrtPriceAtTick(tickLower);
+        uint160 sqrtPriceBX96 = TickMath.getSqrtPriceAtTick(tickUpper);
+        
+        // Calculate amounts based on current price position
+        uint256 amount0;
+        uint256 amount1;
+        
+        if (sqrtPrice <= sqrtPriceAX96) {
+            // Price below range - all amount0
+            amount0 = FullMath.mulDiv(
+                uint256(liquidity) << FixedPoint96.RESOLUTION,
+                sqrtPriceBX96 - sqrtPriceAX96,
+                sqrtPriceBX96
+            ) / sqrtPriceAX96;
+            amount1 = 0;
+        } else if (sqrtPrice >= sqrtPriceBX96) {
+            // Price above range - all amount1
+            amount0 = 0;
+            amount1 = FullMath.mulDiv(liquidity, sqrtPriceBX96 - sqrtPriceAX96, FixedPoint96.Q96);
+        } else {
+            // Price in range - both amounts
+            amount0 = FullMath.mulDiv(
+                uint256(liquidity) << FixedPoint96.RESOLUTION,
+                sqrtPriceBX96 - sqrtPrice,
+                sqrtPriceBX96
+            ) / sqrtPrice;
+            amount1 = FullMath.mulDiv(liquidity, sqrtPrice - sqrtPriceAX96, FixedPoint96.Q96);
+        }
+        
+        uint128 usdcAmount = amount0.toUint128();
+        uint128 usdtAmount = amount1.toUint128();
+        
+        // Quote USDT → USDC swap
+        uint128 usdcFromSwap = _quoteExactInputSingle(
+            usdcUsdtPoolKey,
+            false, // USDT → USDC
+            usdtAmount
+        );
+        
+        // Return total USDC estimate
+        totalUsdcEstimate = usdcAmount + usdcFromSwap;
     }
 
     /// @notice Internal function to quote a single swap
