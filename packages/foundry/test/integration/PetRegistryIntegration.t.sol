@@ -34,7 +34,7 @@ contract PetRegistryIntegrationTest is Test {
     function testFullLifecycle() public {
         // 1. Hatch pet
         vm.prank(hook);
-        uint256 tokenId = registry.hatchFromHook(user1, 0, CHAIN_ID, POOL_ID, 1);
+        uint256 tokenId = registry.hatchFromHook(user1, 0, CHAIN_ID, POOL_ID, 1, -60, 60);
         
         // 2. Check initial state
         PetRegistry.Pet memory pet1 = registry.getPet(tokenId);
@@ -71,15 +71,15 @@ contract PetRegistryIntegrationTest is Test {
         vm.startPrank(hook);
         
         // User1 creates first position - mints pet
-        registry.hatchFromHook(user1, 0, CHAIN_ID, POOL_ID, 1);
+        registry.hatchFromHook(user1, 0, CHAIN_ID, POOL_ID, 1, -60, 60);
         
         // User1 creates second position - updates SAME pet (idempotent)
-        registry.hatchFromHook(user1, 0, CHAIN_ID, POOL_ID, 2);
+        registry.hatchFromHook(user1, 0, CHAIN_ID, POOL_ID, 2, -60, 60);
         
         // User2 creates positions - mints pet
-        registry.hatchFromHook(user2, 0, CHAIN_ID, POOL_ID, 3);
-        registry.hatchFromHook(user2, 0, CHAIN_ID, POOL_ID, 4);
-        registry.hatchFromHook(user2, 0, CHAIN_ID, POOL_ID, 5);
+        registry.hatchFromHook(user2, 0, CHAIN_ID, POOL_ID, 3, -60, 60);
+        registry.hatchFromHook(user2, 0, CHAIN_ID, POOL_ID, 4, -60, 60);
+        registry.hatchFromHook(user2, 0, CHAIN_ID, POOL_ID, 5, -60, 60);
         
         vm.stopPrank();
         

@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     PetRegistry: {
-      address: "0xbdcde6ab94dc03b7da497c364b191451c6873509",
+      address: "0xf4fd3907f04a2997c2d3d4610a54c8bd10daa928",
       abi: [
         {
           type: "constructor",
@@ -141,6 +141,16 @@ const deployedContracts = {
                   type: "uint256",
                   internalType: "uint256",
                 },
+                {
+                  name: "tickLower",
+                  type: "int24",
+                  internalType: "int24",
+                },
+                {
+                  name: "tickUpper",
+                  type: "int24",
+                  internalType: "int24",
+                },
               ],
             },
           ],
@@ -193,6 +203,16 @@ const deployedContracts = {
               name: "positionId",
               type: "uint256",
               internalType: "uint256",
+            },
+            {
+              name: "tickLower",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "tickUpper",
+              type: "int24",
+              internalType: "int24",
             },
           ],
           outputs: [
@@ -275,6 +295,16 @@ const deployedContracts = {
               name: "positionId",
               type: "uint256",
               internalType: "uint256",
+            },
+            {
+              name: "tickLower",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "tickUpper",
+              type: "int24",
+              internalType: "int24",
             },
           ],
           stateMutability: "view",
@@ -672,10 +702,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24407486,
+      deployedOnBlock: 24409397,
     },
     EggHatchHook: {
-      address: "0x6a608aafb7748de531156b67bae2cbbfa5cd0400",
+      address: "0x792f0107658f4e769b8b49f82c723cca9fa74400",
       abi: [
         {
           type: "constructor",
@@ -1613,10 +1643,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24407487,
+      deployedOnBlock: 24409399,
     },
     AutoLpHelper: {
-      address: "0x44acdf9fb534ec1f0b9b871d449bffde11009e94",
+      address: "0xd58c87460e4163da9f5e3c241d38b800d2d4e472",
       abi: [
         {
           type: "constructor",
@@ -2335,7 +2365,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24407488,
+      deployedOnBlock: 24409398,
     },
   },
 } as const;
