@@ -28,8 +28,9 @@ export const metadata = getMetadata({
 const ScaffoldEthApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <html suppressHydrationWarning className={`${fede.variable} ${della.variable}`}>
-      <body>
+      <body className="relative overflow-x-hidden">
         <ThemeProvider enableSystem>
+          <div className="train-bg animate-train-bump pointer-events-none fixed inset-0 -z-10" aria-hidden="true" />
           <ScaffoldEthAppWithProviders>{children}</ScaffoldEthAppWithProviders>
         </ThemeProvider>
       </body>

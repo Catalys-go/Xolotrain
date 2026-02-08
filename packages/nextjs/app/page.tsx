@@ -12,14 +12,11 @@ import { useDeployedContractInfo, useScaffoldReadContract, useScaffoldWriteContr
 const Home: NextPage = () => {
   const { isConnected, address: connectedAddress } = useAccount();
 
-  // input state
   const [ethAmountInput, setEthAmountInput] = useState("");
 
-  // contracts
   const { data: petRegistry } = useDeployedContractInfo({ contractName: "PetRegistry" });
   const { data: autoLpHelper } = useDeployedContractInfo({ contractName: "AutoLpHelper" });
 
-  // read pets
   const { data: userPetIds } = useScaffoldReadContract({
     contractName: "PetRegistry",
     functionName: "getPetsByOwner",
@@ -39,7 +36,6 @@ const Home: NextPage = () => {
 
   const hasPetOnchain = Boolean(firstPetData?.positionId && firstPetData.positionId !== 0n);
 
-  // local transition state (egg -> pet immediately on success without waiting for reads)
   const [localHatched, setLocalHatched] = useState(false);
   const [revealActive, setRevealActive] = useState(false);
   const prevShowPetRef = useRef(false);
@@ -50,15 +46,13 @@ const Home: NextPage = () => {
   }, [hasPetOnchain]);
 
   const showPet = localHatched || hasPetOnchain;
+
   useEffect(() => {
     const prev = prevShowPetRef.current;
 
-    // Transition: egg -> pet
     if (!prev && showPet) {
       setRevealActive(true);
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
-
-      // Run reveal for ~2.2s then stop flashing/stretching
       revealTimerRef.current = setTimeout(() => setRevealActive(false), 2200);
     }
 
@@ -69,7 +63,6 @@ const Home: NextPage = () => {
     };
   }, [showPet]);
 
-  // quote for min-outs (same as liquidity page)
   const { data: quoteData } = useScaffoldReadContract({
     contractName: "AutoLpHelper",
     functionName: "quoteSwapOutputs",
@@ -89,7 +82,6 @@ const Home: NextPage = () => {
     try {
       const value = parseEther(ethAmountInput || "0");
 
-      // min-outs from quote with 10% slippage
       let minUsdcOut: bigint;
       let minUsdtOut: bigint;
 
@@ -97,13 +89,11 @@ const Home: NextPage = () => {
         const [quotedUsdc, quotedUsdt] = quoteData as readonly [bigint, bigint];
         const slippageTolerance = 0.9;
 
-        // (keep same approach as liquidity page)
         minUsdcOut = BigInt(Math.floor(Number(quotedUsdc) * slippageTolerance));
         minUsdtOut = BigInt(Math.floor(Number(quotedUsdt) * slippageTolerance));
       } else {
-        // conservative fallback
-        minUsdcOut = 100_000n; // 0.1 USDC (6 decimals)
-        minUsdtOut = 100_000n; // 0.1 USDT (6 decimals)
+        minUsdcOut = 100_000n;
+        minUsdtOut = 100_000n;
       }
 
       await writeContractAsync({
@@ -112,7 +102,6 @@ const Home: NextPage = () => {
         value,
       });
 
-      // if tx succeeded, flip visual immediately
       setLocalHatched(true);
     } catch (error: any) {
       console.error("Transaction error:", error);
@@ -129,7 +118,6 @@ const Home: NextPage = () => {
     }
   };
 
-  // 1) LOCKED: title screen (no wallet connected)
   if (!isConnected) {
     return (
       <div className="min-h-screen flex items-center justify-center px-5 bg-primary">
@@ -148,13 +136,11 @@ const Home: NextPage = () => {
     );
   }
 
-  // 2) UNLOCKED: hatch screen
   return (
-    <div className="min-h-screen flex items-center justify-center px-5 pt-16 pb-28 bg-primary">
+    <div className="min-h-screen flex items-center justify-center px-5 pt-16 pb-28 ">
       <div className="w-full max-w-xl">
-        <div className="bg-base-100 rounded-3xl p-6">
+        <div className="rounded-3xl p-6">
           <div className="flex flex-col items-center justify-center gap-6">
-            {/* Main visual */}
             <div className="w-full flex items-center justify-center">
               <div
                 className={[
@@ -162,7 +148,6 @@ const Home: NextPage = () => {
                   showPet || revealActive ? "w-[450px] h-[450px]" : "w-[256px] h-[256px]",
                 ].join(" ")}
               >
-                {/* Bubble pops (only during reveal) */}
                 {revealActive && (
                   <>
                     {[
@@ -200,22 +185,23 @@ const Home: NextPage = () => {
                   height={showPet || revealActive ? 450 : 256}
                   className={[
                     "rounded-3xl",
-                    // Egg idle float; pet idle float only after reveal finishes
                     !showPet ? "animate-egg-float" : !revealActive ? "animate-egg-float" : "",
-                    // Pending hatch keeps egg flashing/stretching
                     isHatching ? "animate-egg-hatch" : "",
-                    // Pet reveal: fast -> slow settle + flashing/stretching, then stops
                     revealActive ? "animate-pet-reveal" : "",
                   ].join(" ")}
                   priority
                 />
               </div>
             </div>
-            {showPet && <p className="text-lg text-center">Click the Axo LP tab to see your position details</p>}
 
-            {/* Hatch card (only before hatch; single-position test flow) */}
+            {showPet && (
+              <p className="text-lg text-center text-base-content/80">
+                Click the Axo LP tab to see your position details
+              </p>
+            )}
+
             {!showPet && (
-              <div className="card bg-base-100 w-full">
+              <div className="card w-full">
                 <div className="card-body text-center">
                   <p className="text-sm text-base-content/70">Auto swap ETH into USDC/USDT + mint LP.</p>
 
