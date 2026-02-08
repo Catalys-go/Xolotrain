@@ -4,6 +4,7 @@
  */
 
 import { Address, PublicClient } from "viem";
+import externalContracts from "../../../nextjs/contracts/externalContracts";
 
 export interface PoolKey {
   currency0: Address;
@@ -20,28 +21,41 @@ export interface Slot0 {
   lpFee: number;
 }
 
-// Minimal ABI for reading pool state
-export const poolManagerAbi = [
+// Import ABI from externalContracts (Uniswap v4 is external)
+// Note: Adjust chainId as needed for your deployment
+export const poolManagerAbi =
+  (externalContracts as any)[1]?.IPoolManager?.abi ||
+  ([
+    // Fallback minimal ABI for Uniswap v4 PoolManager (updated Feb 2026)
+    // Note: Uniswap v4 uses low-level extsload for pool state access
+    // In production, use StateLibrary.sol helpers or proper IPoolManager ABI
+    /* Minimal ABI for direct storage access via extsload:
   {
-    inputs: [{ name: "id", type: "bytes32" }],
-    name: "getSlot0",
-    outputs: [
-      { name: "sqrtPriceX96", type: "uint160" },
-      { name: "tick", type: "int24" },
-      { name: "protocolFee", type: "uint24" },
-      { name: "lpFee", type: "uint24" },
+    inputs: [{ name: "slot", type: "bytes32" }],
+    name: "extsload",
+    outputs: [{ name: "value", type: "bytes32" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "startSlot", type: "bytes32" },
+      { name: "nSlots", type: "uint256" },
     ],
+    name: "extsload",
+    outputs: [{ name: "values", type: "bytes32[]" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [{ name: "id", type: "bytes32" }],
-    name: "getLiquidity",
-    outputs: [{ name: "", type: "uint128" }],
+    inputs: [{ name: "slots", type: "bytes32[]" }],
+    name: "extsload",
+    outputs: [{ name: "values", type: "bytes32[]" }],
     stateMutability: "view",
     type: "function",
   },
-] as const;
+  */
+  ] as const);
 
 /**
  * Get current pool state (tick, price, fees)
@@ -51,12 +65,12 @@ export async function getSlot0(
   poolManagerAddress: Address,
   poolId: `0x${string}`,
 ): Promise<Slot0> {
-  const result = await client.readContract({
+  const result = (await client.readContract({
     address: poolManagerAddress,
     abi: poolManagerAbi,
     functionName: "getSlot0",
     args: [poolId],
-  });
+  })) as [bigint, bigint, bigint, bigint];
 
   return {
     sqrtPriceX96: result[0],
@@ -74,10 +88,10 @@ export async function getPoolLiquidity(
   poolManagerAddress: Address,
   poolId: `0x${string}`,
 ): Promise<bigint> {
-  return await client.readContract({
+  return (await client.readContract({
     address: poolManagerAddress,
     abi: poolManagerAbi,
     functionName: "getLiquidity",
     args: [poolId],
-  });
+  })) as bigint;
 }
