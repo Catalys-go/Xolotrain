@@ -208,3 +208,36 @@
   animation: train-bump 1.35s ease-in-out infinite;
   will-change: transform;
 }
+
+/* Parallax landscape behind the train scene */
+.parallax-bg {
+  background-image: url("/para.svg");
+  background-repeat: repeat-x;
+  /* Position it around the window band (upper/middle), not at the bottom */
+  background-position: 0% 38%;
+  /* Make it taller so movement is visible */
+  background-size: auto clamp(220px, 34vh, 420px);
+  /* Make it feel “behind glass” */
+  opacity: 0.35;
+  mix-blend-mode: soft-light;
+  filter: blur(0.2px) saturate(1.05) contrast(1.02);
+}
+
+/* Slow right-to-left loop */
+@keyframes parallax-scroll {
+  0%   { background-position-x: 0%; }
+  100% { background-position-x: -200%; }
+}
+
+.animate-parallax-scroll {
+  animation: parallax-scroll 60s linear infinite;
+  will-change: background-position;
+}
+
+/* Reduce motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .animate-parallax-scroll,
+  .animate-train-bump {
+    animation: none !important;
+  }
+}
