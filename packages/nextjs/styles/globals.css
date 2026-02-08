@@ -2,8 +2,6 @@
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
-@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
-
 @theme {
   --shadow-center: 0 0 12px -2px rgb(0 0 0 / 0.05);
   --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -18,22 +16,22 @@
 @plugin "daisyui/theme" {
   name: "light";
 
-  --color-primary: #93bbfb;
-  --color-primary-content: #212638;
-  --color-secondary: #dae8ff;
-  --color-secondary-content: #212638;
-  --color-accent: #93bbfb;
-  --color-accent-content: #212638;
-  --color-neutral: #212638;
-  --color-neutral-content: #ffffff;
-  --color-base-100: #ffffff;
-  --color-base-200: #f4f8ff;
-  --color-base-300: #dae8ff;
-  --color-base-content: #212638;
-  --color-info: #93bbfb;
-  --color-success: #34eeb6;
-  --color-warning: #ffcf72;
-  --color-error: #ff8863;
+  --color-primary: #F6D28E;
+  --color-primary-content: #1F2430;
+  --color-secondary: #FFFFFF;
+  --color-secondary-content: #1F2430;
+  --color-accent: #2D7FF9;
+  --color-accent-content: #FFFFFF;
+  --color-neutral: #1F2430;
+  --color-neutral-content: #FFFFFF;
+  --color-base-100: #FFFFFF;
+  --color-base-200: #FAFAF7;
+  --color-base-300: #F4F0E6;
+  --color-base-content: #1F2430;
+  --color-info: #2D7FF9;
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
 
   --radius-field: 9999rem;
   --radius-box: 1rem;
@@ -43,22 +41,22 @@
 @plugin "daisyui/theme" {
   name: "dark";
 
-  --color-primary: #212638;
-  --color-primary-content: #f9fbff;
-  --color-secondary: #323f61;
-  --color-secondary-content: #f9fbff;
-  --color-accent: #4969a6;
-  --color-accent-content: #f9fbff;
-  --color-neutral: #f9fbff;
-  --color-neutral-content: #385183;
-  --color-base-100: #385183;
-  --color-base-200: #2a3655;
-  --color-base-300: #212638;
-  --color-base-content: #f9fbff;
-  --color-info: #385183;
-  --color-success: #34eeb6;
-  --color-warning: #ffcf72;
-  --color-error: #ff8863;
+  --color-primary: #1F2430;
+  --color-primary-content: #FAFAF7;
+  --color-secondary: #2D7FF9;
+  --color-secondary-content: #FFFFFF;
+  --color-accent: #F6D28E;
+  --color-accent-content: #1F2430;
+  --color-neutral: #FAFAF7;
+  --color-neutral-content: #1F2430;
+  --color-base-100: #1F2430;
+  --color-base-200: #151923;
+  --color-base-300: #0C0F17;
+  --color-base-content: #FAFAF7;
+  --color-info: #2D7FF9;
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
 
   --radius-field: 9999rem;
   --radius-box: 1rem;
@@ -67,14 +65,7 @@
   --tt-bg: var(--color-primary);
 }
 
-/*
-  The default border color has changed to `currentColor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
+/* Tailwind v4 border compatibility */
 @layer base {
   *,
   ::after,
@@ -90,6 +81,7 @@
 
   body {
     min-height: 100vh;
+    font-family: var(--font-fede);
   }
 
   h1,
@@ -98,6 +90,7 @@
   h4 {
     margin-bottom: 0.5rem;
     line-height: 1;
+    font-family: var(--font-della);
   }
 }
 
@@ -120,4 +113,131 @@
 
 .link:hover {
   opacity: 80%;
+}
+
+@layer utilities {
+  .font-fede {
+    font-family: var(--font-fede);
+  }
+
+  .font-della {
+    font-family: var(--font-della);
+  }
+}
+
+@keyframes egg-float {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-12px) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.animate-egg-float {
+  animation: egg-float 2s ease-in-out infinite;
+  transform-origin: 50% 80%;
+  will-change: transform;
+}
+
+@keyframes egg-hatch {
+  0% { transform: scale(1, 1) rotate(0deg); filter: brightness(1) contrast(1); }
+  15% { transform: scale(1.05, 0.95) rotate(-2deg); filter: brightness(1.25) contrast(1.1); }
+  30% { transform: scale(0.98, 1.06) rotate(2deg); filter: brightness(1.05) contrast(1); }
+  45% { transform: scale(1.10, 0.92) rotate(-3deg); filter: brightness(1.35) contrast(1.2); }
+  60% { transform: scale(0.96, 1.08) rotate(3deg); filter: brightness(1.1) contrast(1.05); }
+  75% { transform: scale(1.08, 0.94) rotate(-2deg); filter: brightness(1.3) contrast(1.15); }
+  100% { transform: scale(1, 1) rotate(0deg); filter: brightness(1) contrast(1); }
+}
+
+.animate-egg-hatch {
+  animation: egg-hatch 0.9s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, filter;
+}
+
+@keyframes pet-reveal {
+  0% { transform: scale(0.92, 1.08) rotate(-3deg); filter: brightness(1.35) contrast(1.2); }
+  8% { transform: scale(1.12, 0.90) rotate(3deg); filter: brightness(1.55) contrast(1.25); }
+  16% { transform: scale(0.95, 1.06) rotate(-2deg); filter: brightness(1.35) contrast(1.2); }
+  24% { transform: scale(1.10, 0.92) rotate(2deg); filter: brightness(1.45) contrast(1.2); }
+  32% { transform: scale(0.98, 1.03) rotate(-1.5deg); filter: brightness(1.25) contrast(1.1); }
+  40% { transform: scale(1.06, 0.96) rotate(1.5deg); filter: brightness(1.2) contrast(1.08); }
+  55% { transform: scale(1.02, 0.99) rotate(-0.8deg); filter: brightness(1.1) contrast(1.05); }
+  70% { transform: scale(1.01, 0.995) rotate(0.4deg); filter: brightness(1.05) contrast(1.02); }
+  85% { transform: scale(1.005, 0.998) rotate(-0.2deg); filter: brightness(1.02) contrast(1.01); }
+  100% { transform: scale(1, 1) rotate(0deg); filter: brightness(1) contrast(1); }
+}
+
+.animate-pet-reveal {
+  animation: pet-reveal 2.2s ease-out forwards;
+  transform-origin: center;
+  will-change: transform, filter;
+}
+
+@keyframes bubble-pop {
+  0% { opacity: 0; transform: translateY(10px) scale(0.6); filter: blur(0px); }
+  15% { opacity: 0.9; transform: translateY(0px) scale(1); }
+  60% { opacity: 0.8; transform: translateY(-16px) scale(1.05); }
+  100% { opacity: 0; transform: translateY(-28px) scale(1.15); filter: blur(0.5px); }
+}
+
+.animate-bubble-pop {
+  animation: bubble-pop 900ms ease-out forwards;
+  will-change: transform, opacity, filter;
+}
+
+.train-bg {
+  background-image: url("/bg.svg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  filter: saturate(1.02) contrast(1.02);
+}
+
+@keyframes train-bump {
+  0% { transform: translate3d(0, 0, 0); }
+  12% { transform: translate3d(0, -1px, 0); }
+  25% { transform: translate3d(0, 2px, 0); }
+  38% { transform: translate3d(0, -2px, 0); }
+  50% { transform: translate3d(0, 1px, 0); }
+  62% { transform: translate3d(0, -1px, 0); }
+  75% { transform: translate3d(0, 2px, 0); }
+  88% { transform: translate3d(0, -1px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+.animate-train-bump {
+  animation: train-bump 1.35s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Parallax landscape behind the train scene */
+.parallax-bg {
+  background-image: url("/para.svg");
+  background-repeat: repeat-x;
+  /* Position it around the window band (upper/middle), not at the bottom */
+  background-position: 0% 38%;
+  /* Make it taller so movement is visible */
+  background-size: auto clamp(220px, 34vh, 420px);
+  /* Make it feel “behind glass” */
+  opacity: 0.35;
+  mix-blend-mode: soft-light;
+  filter: blur(0.2px) saturate(1.05) contrast(1.02);
+}
+
+/* Slow right-to-left loop */
+@keyframes parallax-scroll {
+  0%   { background-position-x: 0%; }
+  100% { background-position-x: -200%; }
+}
+
+.animate-parallax-scroll {
+  animation: parallax-scroll 60s linear infinite;
+  will-change: background-position;
+}
+
+/* Reduce motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .animate-parallax-scroll,
+  .animate-train-bump {
+    animation: none !important;
+  }
 }
