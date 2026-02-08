@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     PetRegistry: {
-      address: "0xbdcde6ab94dc03b7da497c364b191451c6873509",
+      address: "0x1ea14470b785e33c4fc59897d46483ecfb604dd3",
       abi: [
         {
           type: "constructor",
@@ -672,10 +672,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24407486,
+      deployedOnBlock: 24408793,
     },
     EggHatchHook: {
-      address: "0x6a608aafb7748de531156b67bae2cbbfa5cd0400",
+      address: "0x479a94dc64789b4bba56cd7e3e592730d0fe4400",
       abi: [
         {
           type: "constructor",
@@ -1613,10 +1613,10 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24407487,
+      deployedOnBlock: 24408794,
     },
     AutoLpHelper: {
-      address: "0x44acdf9fb534ec1f0b9b871d449bffde11009e94",
+      address: "0x00d93be4b3bb154a2e1fa1650230f396311af254",
       abi: [
         {
           type: "constructor",
@@ -2335,7 +2335,7 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
-      deployedOnBlock: 24407488,
+      deployedOnBlock: 24408794,
     },
   },
 } as const;

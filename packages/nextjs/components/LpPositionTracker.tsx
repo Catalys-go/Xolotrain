@@ -135,12 +135,10 @@ export const LpPositionTracker = ({
 
   if (!hasLpPositions && !hasFirstPet) {
     return (
-      <div className="card bg-base-100 shadow-xl">
+      <div className="card shadow-xl">
         <div className="card-body">
           <h2 className="card-title">LP Position Tracker</h2>
-          <p className="text-sm text-base-content/70 mb-4">
-            Track your USDC/USDT liquidity positions and their performance
-          </p>
+          <p className="text-sm  mb-4">Track your USDC/USDT liquidity positions and their performance</p>
           <div className="alert alert-warning">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -160,7 +158,7 @@ export const LpPositionTracker = ({
               <div className="text-sm">Use &ldquo;Auto LP + Hatch&rdquo; above to create your first position</div>
             </div>
           </div>
-          <div className="mt-4 text-sm text-base-content/70">
+          <div className="mt-4 text-sm ">
             <div className="font-semibold mb-2">What you&apos;ll get:</div>
             <ul className="list-disc list-inside space-y-1">
               <li>Liquidity position in USDC/USDT Uniswap v4 pool</li>
@@ -175,15 +173,22 @@ export const LpPositionTracker = ({
   }
 
   return (
-    <div className="card bg-base-100 shadow-xl">
+    <div className="card">
       <div className="card-body">
         <h2 className="card-title">LP Position Tracker</h2>
-        <p className="text-sm text-base-content/70 mb-4">
-          Track your USDC/USDT liquidity positions and their performance
-        </p>
 
         {hasLpPositions ? (
           <div className="space-y-4">
+            <div className="mx-auto">
+              <div className=" text-sm mb-1">Status</div>
+              <div className="flex items-center gap-2 mx-auto">
+                <div className="text-3xl font-bold">{status.text}</div>
+                <div className={`badge ${status.badge}`}>{status.icon}</div>
+              </div>
+              <div className="text-sm  mt-1">
+                Health-based estimate • Accurate tick data requires PoolManager integration
+              </div>
+            </div>
             {/* Chain Icon & Position Header */}
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-full bg-base-200 flex items-center justify-center">
@@ -191,9 +196,7 @@ export const LpPositionTracker = ({
               </div>
               <div className="flex-1">
                 <div className="text-2xl font-bold">LP POSITION</div>
-                <div className="text-sm text-base-content/70">
-                  {targetNetwork.id === 31337 ? "Localhost (Fork)" : targetNetwork.name}
-                </div>
+                <div className="text-sm">{targetNetwork.id === 31337 ? "Localhost (Fork)" : targetNetwork.name}</div>
               </div>
             </div>
 
@@ -202,18 +205,18 @@ export const LpPositionTracker = ({
             {/* Pool & Position Data */}
             <div className="space-y-3">
               <div>
-                <div className="text-base-content/70 text-sm mb-1">Pool</div>
+                <div className="text-sm mb-1">Pool</div>
                 <div className="text-3xl font-bold">{poolInfo?.name?.replace("_", "/") || "USDC/USDT"}</div>
                 {poolInfo && (
-                  <div className="text-xs text-base-content/60 mt-1">
+                  <div className="text-xs mt-1">
                     Fee: {(poolInfo.fee / 10000).toFixed(3)}% • Tick Spacing: {poolInfo.tickSpacing}
                   </div>
                 )}
               </div>
 
               <div>
-                <div className="text-base-content/70 text-sm mb-1">Position ID</div>
-                <div className="flex items-center gap-2">
+                <div className="text-sm mb-1">Position ID</div>
+                <div className="flex items-center gap-2 text-primary">
                   <div className="text-2xl font-mono font-bold">
                     {firstPetPositionId ? truncateString(firstPetPositionId.toString(), 12, 10) : "—"}
                   </div>
@@ -222,9 +225,9 @@ export const LpPositionTracker = ({
               </div>
 
               <div>
-                <div className="text-base-content/70 text-sm mb-1">Pool ID</div>
+                <div className="text-sm mb-1">Pool ID</div>
                 <div className="flex items-center gap-2">
-                  <div className="text-sm font-mono break-all text-base-content/80">
+                  <div className="text-sm font-mono break-all">
                     {firstPetPoolId ? truncateString(firstPetPoolId, 16, 12) : "—"}
                   </div>
                   {firstPetPoolId && <CopyButton text={firstPetPoolId} />}
@@ -232,25 +235,14 @@ export const LpPositionTracker = ({
               </div>
 
               <div>
-                <div className="text-base-content/70 text-sm mb-1">Position NFT</div>
+                <div className=" text-sm mb-1">Position NFT</div>
                 <div className="flex items-center gap-2">
                   <div className="text-2xl font-mono font-bold">
                     {firstPetPositionId ? `#${truncateString(firstPetPositionId.toString(), 12, 10)}` : "—"}
                   </div>
                   {firstPetPositionId && <CopyButton text={firstPetPositionId.toString()} />}
                 </div>
-                <div className="text-xs text-base-content/60 mt-1">Uniswap v4 PositionManager NFT</div>
-              </div>
-
-              <div>
-                <div className="text-base-content/70 text-sm mb-1">Status</div>
-                <div className="flex items-center gap-2">
-                  <div className="text-3xl font-bold">{status.text}</div>
-                  <div className={`badge ${status.badge}`}>{status.icon}</div>
-                </div>
-                <div className="text-sm text-base-content/60 mt-1">
-                  Health-based estimate • Accurate tick data requires PoolManager integration
-                </div>
+                <div className="text-xs mt-1">Uniswap v4 PositionManager NFT</div>
               </div>
             </div>
 
@@ -302,15 +294,15 @@ export const LpPositionTracker = ({
                 <div className="text-sm font-semibold">Pool Information</div>
                 <div className="p-3 bg-base-200 rounded-xl space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-base-content/70">Pool:</span>
+                    <span className="">Pool:</span>
                     <span className="font-semibold">USDC/USDT</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-base-content/70">Fee Tier:</span>
+                    <span className="">Fee Tier:</span>
                     <span className="font-mono">0.001%</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-base-content/70">Tick Spacing:</span>
+                    <span className="">Tick Spacing:</span>
                     <span className="font-mono">1</span>
                   </div>
                 </div>
@@ -320,15 +312,15 @@ export const LpPositionTracker = ({
                 <div className="text-sm font-semibold">Range Strategy</div>
                 <div className="p-3 bg-base-200 rounded-xl space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-base-content/70">Lower Offset:</span>
+                    <span className="">Lower Offset:</span>
                     <span className="font-mono">-6 ticks</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-base-content/70">Upper Offset:</span>
+                    <span className="">Upper Offset:</span>
                     <span className="font-mono">+6 ticks</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-base-content/70">Status:</span>
+                    <span className="">Status:</span>
                     <span className="badge badge-success badge-sm">In Range</span>
                   </div>
                 </div>

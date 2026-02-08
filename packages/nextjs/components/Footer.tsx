@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { hardhat } from "viem/chains";
 import { useAccount } from "wagmi";
 import { ChevronUpIcon } from "@heroicons/react/24/outline";
-import { SwitchTheme } from "~~/components/SwitchTheme";
-import { Faucet } from "~~/components/scaffold-eth";
-import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
+import { LpPositionTracker } from "~~/components/LpPositionTracker";
+//import { SwitchTheme } from "~~/components/SwitchTheme";
+//import { Faucet } from "~~/components/scaffold-eth";
+import { useDeployedContractInfo, useScaffoldReadContract } from "~~/hooks/scaffold-eth";
 
 /**
  * Footer: LP bottom sheet.
@@ -15,12 +15,37 @@ import { useTargetNetwork } from "~~/hooks/scaffold-eth/useTargetNetwork";
  * - Expands upward to reveal LP details (wire to on-chain reads next).
  */
 export const Footer = () => {
-  const { isConnected } = useAccount();
-  const { targetNetwork } = useTargetNetwork();
-  const isLocalNetwork = targetNetwork.id === hardhat.id;
+  const { isConnected, address: connectedAddress } = useAccount();
 
-  // Per docs: LP details depend on PetRegistry + PoolManager position reads.
-  // For now, we display a coherent placeholder panel.
+  // PetRegistry contract info and reads (mirror Liquidity page)
+  const { data: petRegistry } = useDeployedContractInfo({ contractName: "PetRegistry" });
+
+  const { data: userPetIds } = useScaffoldReadContract({
+    contractName: "PetRegistry",
+    functionName: "getPetsByOwner",
+    args: [connectedAddress],
+    query: { enabled: Boolean(petRegistry?.address && connectedAddress) },
+  });
+
+  const userPetCount = (userPetIds as bigint[])?.length ?? 0;
+  const firstPetId = userPetCount > 0 ? (userPetIds as bigint[])[0] : undefined;
+
+  const { data: firstPetData } = useScaffoldReadContract({
+    contractName: "PetRegistry",
+    functionName: "getPet",
+    args: [firstPetId],
+    query: { enabled: Boolean(petRegistry?.address && firstPetId) },
+  });
+
+  const firstPetHealth = firstPetData?.health;
+  const firstPetPositionId = firstPetData?.positionId;
+  const firstPetPoolId = firstPetData?.poolId;
+  const firstPetChainId = firstPetData?.chainId;
+
+  const hasFirstPet = Boolean(firstPetData && firstPetPositionId && firstPetPositionId !== 0n);
+  const hasLpPositions = userPetCount > 0;
+
+  // Sheet open state: user-controlled (collapsed by default)
   const [open, setOpen] = useState(false);
 
   const sheetClass = useMemo(() => {
@@ -29,6 +54,7 @@ export const Footer = () => {
   }, [open]);
 
   if (!isConnected) return null;
+  if (!hasFirstPet && !hasLpPositions) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">
@@ -52,40 +78,17 @@ export const Footer = () => {
 
           {/* Content */}
           <div id="lp-bottom-sheet" className="px-5 pb-6">
-            <div className="flex items-center justify-between gap-4 pb-4">
-              <div className="text-sm ">
-                LP position details (Uniswap v4 USDC/USDT) — expands from bottom per main-screen spec.
-              </div>
-              <div className="flex items-center gap-2">
-                {isLocalNetwork && <Faucet />}
-                <SwitchTheme className="" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-base-200 rounded-2xl p-4">
-                <div className="text-xs text-base-content/60">Status</div>
-                <div className="mt-1 text-sm text-base-content">—</div>
-                <div className="mt-3 text-xs text-base-content/60">In range</div>
-                <div className="mt-1 text-sm text-base-content">—</div>
-              </div>
-              <div className="bg-base-200 rounded-2xl p-4">
-                <div className="text-xs text-base-content/60">Liquidity</div>
-                <div className="mt-1 text-sm text-base-content">—</div>
-                <div className="mt-3 text-xs text-base-content/60">Fees earned</div>
-                <div className="mt-1 text-sm text-base-content">—</div>
-              </div>
-              <div className="bg-base-200 rounded-2xl p-4">
-                <div className="text-xs text-base-content/60">Range</div>
-                <div className="mt-1 text-sm text-base-content">—</div>
-                <div className="mt-3 text-xs text-base-content/60">Pet health</div>
-                <div className="mt-1 text-sm text-base-content">—</div>
-              </div>
-            </div>
-
-            <div className="mt-5 text-xs text-base-content/60">
-              Next wiring step: read PetRegistry.getPetsByOwner(address) → positionId → PoolManager position state;
-              compute health deterministically as described in INTERACTIONS.md / SYSTEM_ARCHITECTURE.md.
+            <div className="mt-2">
+              <LpPositionTracker
+                hasLpPositions={hasLpPositions}
+                userPetIds={userPetIds as bigint[]}
+                firstPetHealth={firstPetHealth}
+                firstPetPositionId={firstPetPositionId}
+                firstPetPoolId={firstPetPoolId}
+                firstPetChainId={firstPetChainId}
+                hasFirstPet={hasFirstPet}
+                firstPetId={firstPetId}
+              />
             </div>
           </div>
         </div>
