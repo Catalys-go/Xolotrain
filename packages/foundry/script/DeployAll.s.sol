@@ -26,7 +26,9 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
  *   - In forge test: Use test contract address(this) or the pranking address
  *   - In forge script: Use 0x4e59b44847b379578588920cA78FbF26c0B4956C (CREATE2 Deployer Proxy)
  *   - This deployment uses CREATE2_DEPLOYER for deterministic hook addresses
- * 
+ *  
+ *   !** Before running, be sure foundry/addresses/poolKeys.json has the correct    address for all fields except for hook and poolId of USDC_USDT pool (these will be updated by you afterwards) **!
+ *
  * Process:
  *   1. Deploy PetRegistry with deterministic salt
  *   2. Mine valid hook address using PetRegistry address
@@ -148,7 +150,8 @@ contract DeployAll is ScaffoldETHDeploy {
             usdcUsdt,
             usdcUsdt.tickSpacing,
             -6,
-            6
+            6,
+            deployer
         );
         deployments.push(Deployment({name: "AutoLpHelper", addr: address(autoLpHelper)}));
         console.log("AutoLpHelper deployed at:", address(autoLpHelper));

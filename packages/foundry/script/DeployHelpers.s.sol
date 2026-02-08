@@ -40,11 +40,9 @@ contract ScaffoldETHDeploy is Script {
         vm.startBroadcast();
         (, address _deployer,) = vm.readCallers();
         
-        // Use tx.origin as the actual deployer (the keystore account that initiated the transaction)
-        // vm.readCallers() may return Foundry's default address instead of keystore
-        // tx.origin = original external account (your keystore)
-        // msg.sender = immediate caller (may be a contract in the call chain)
-        address actualDeployer = tx.origin;
+        // After startBroadcast(), msg.sender is the broadcasting address (keystore)
+        // vm.readCallers() returns the correct broadcaster after startBroadcast()
+        address actualDeployer = _deployer;
 
         if (block.chainid == 31337 && actualDeployer.balance == 0) {
             try vm.deal(actualDeployer, ANVIL_BASE_BALANCE) {
