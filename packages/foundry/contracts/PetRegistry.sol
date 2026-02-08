@@ -13,6 +13,8 @@ contract PetRegistry is Ownable {
         uint256 chainId; // last station
         bytes32 poolId; // Uniswap v4 pool id
         uint256 positionId; // LP position id or NFT id (if applicable)
+        int24 tickLower; // Lower tick of LP range
+        int24 tickUpper; // Upper tick of LP range
     }
 
     error NotHook(address caller);
@@ -77,13 +79,17 @@ contract PetRegistry is Ownable {
     /// @param chainId Current chain ID where LP was created
     /// @param poolId Uniswap v4 pool identifier
     /// @param positionId Unique LP position identifier
+    /// @param tickLower Lower tick of the LP range
+    /// @param tickUpper Upper tick of the LP range
     /// @return petId The pet ID (derived or provided)
     function hatchFromHook(
         address owner,
         uint256 petId,
         uint256 chainId,
         bytes32 poolId,
-        uint256 positionId
+        uint256 positionId,
+        int24 tickLower,
+        int24 tickUpper
     ) external returns (uint256) {
         if (msg.sender != hook) revert NotHook(msg.sender);
         if (owner == address(0)) revert InvalidOwner();
@@ -100,6 +106,8 @@ contract PetRegistry is Ownable {
                 repositionPet.chainId = chainId;
                 repositionPet.poolId = poolId;
                 repositionPet.positionId = positionId;
+                repositionPet.tickLower = tickLower;
+                repositionPet.tickUpper = tickUpper;
                 repositionPet.lastUpdate = block.timestamp;
                 
                 emit PetMigrated(existingPetId, owner, prevChainId, chainId, poolId, positionId);
@@ -116,7 +124,9 @@ contract PetRegistry is Ownable {
                 lastUpdate: block.timestamp,
                 chainId: chainId,
                 poolId: poolId,
-                positionId: positionId
+                positionId: positionId,
+                tickLower: tickLower,
+                tickUpper: tickUpper
             });
             ownerPets[owner].push(petId);
             activePetId[owner] = petId;
@@ -138,7 +148,9 @@ contract PetRegistry is Ownable {
                 lastUpdate: block.timestamp,
                 chainId: chainId,
                 poolId: poolId,
-                positionId: positionId
+                positionId: positionId,
+                tickLower: tickLower,
+                tickUpper: tickUpper
             });
             ownerPets[owner].push(petId);
             activePetId[owner] = petId;
@@ -159,6 +171,8 @@ contract PetRegistry is Ownable {
         existingPet.chainId = chainId;
         existingPet.poolId = poolId;
         existingPet.positionId = positionId;
+        existingPet.tickLower = tickLower;
+        existingPet.tickUpper = tickUpper;
         existingPet.lastUpdate = block.timestamp;
         activePetId[owner] = petId; // Update active pointer
         

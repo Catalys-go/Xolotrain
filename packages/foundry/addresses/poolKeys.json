@@ -24,8 +24,8 @@
       "token1": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       "fee": 10,
       "tickSpacing": 1,
-      "hooks": "0x96b98884691eBa1a22B786E250316C38bC1A4400",
-      "poolId": "0x0e7df5b8357e35c56fd1e0cc110c9dcf6d4e4e2374e4db44ff5923ae1dc99b5a"
+      "hooks": "0x792F0107658f4e769b8B49f82c723CcA9Fa74400",
+      "poolId": "0x232a50589bfa51d2a4fc895e71e0af829f2f8ef33ca836d1338dc69290e93d52"
     }
   },
   "31337": {
@@ -53,8 +53,8 @@
       "token1": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       "fee": 10,
       "tickSpacing": 1,
-      "hooks": "0xEa0C0Cf8B9523E0f73dbe676AD5Be79146f28400",
-      "poolId": "0x50114ea1a600546fcd02211454a6e8480467d651fc2bdc7f093056c4c5ecf4de"
+      "hooks": "0x792F0107658f4e769b8B49f82c723CcA9Fa74400",
+      "poolId": "0x232a50589bfa51d2a4fc895e71e0af829f2f8ef33ca836d1338dc69290e93d52"
     }
   },
   "8453": {

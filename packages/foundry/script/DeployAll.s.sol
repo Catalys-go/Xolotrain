@@ -8,6 +8,7 @@ import {EggHatchHook} from "../contracts/EggHatchHook.sol";
 import {PetRegistry} from "../contracts/PetRegistry.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
@@ -84,6 +85,7 @@ contract DeployAll is ScaffoldETHDeploy {
         uint160 flags = uint160(Hooks.AFTER_ADD_LIQUIDITY_FLAG);
         
         // Mine a salt that will produce a hook address with the correct flags
+        // IMPORTANT: Use CREATE2_DEPLOYER because Solidity's new{salt} uses msg.sender as deployer
         bytes memory constructorArgs = abi.encode(poolManager, address(petRegistry));
         
         (address hookAddress, bytes32 hookSalt) = HookMiner.find(
@@ -176,6 +178,9 @@ contract DeployAll is ScaffoldETHDeploy {
         }
         console.log("");
         
+        // Calculate USDC_USDT poolId for reference
+        bytes32 calculatedPoolId = PoolId.unwrap(usdcUsdt.toId());
+        
         // ===========================
         // SUMMARY
         // ===========================
@@ -187,10 +192,15 @@ contract DeployAll is ScaffoldETHDeploy {
         console.log("  Salt:", vm.toString(hookSalt));
         console.log("AutoLpHelper:", address(autoLpHelper));
         console.log("");
+        console.log("USDC_USDT Pool ID:");
+        console.logBytes32(calculatedPoolId);
+        console.log("");
         console.log("====================================");
         console.log("Next Steps:");
         console.log("====================================");
         console.log("1. Update poolKeys.json USDC_USDT.hooks to:", hookAddress);
+        console.log("   AND poolKeys.json USDC_USDT.poolId to:");
+        console.logBytes32(calculatedPoolId);
         console.log("2. Run: node scripts-js/generateTsAbis.js");
         console.log("3. Set agent: cast send", address(petRegistry), '"setAgent(address)" $AGENT_ADDRESS');
         console.log("4. Add liquidity to ETH/USDC and ETH/USDT pools");

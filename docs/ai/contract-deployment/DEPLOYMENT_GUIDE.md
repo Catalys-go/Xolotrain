@@ -16,15 +16,24 @@ Use the unified deployment script that handles everything:
 cd packages/foundry
 
 # Deploy everything (mines hook address automatically)
-yarn deploy --rpc-url http://127.0.0.1:8545 # --keystore my-account  Optional flag to add your account as the deployer address
+yarn deploy --rpc-url http://127.0.0.1:8545 --keystore XolotrainDeployer
 
-# Update poolKeys.json with the hook address from output
+# Update poolKeys.json with the hook address AND poolId from output
 # Edit: addresses/poolKeys.json -> USDC_USDT.hooks = <mined_address>
+# Edit: addresses/poolKeys.json -> USDC_USDT.poolId = <calculated_poolId>
 
 # Set agent address (get from output or use your agent wallet once agent is created)
 cast send <PET_REGISTRY_ADDRESS> "setAgent(address)" <YOUR_AGENT_ADDRESS> \
   --rpc-url http://127.0.0.1:8545 \
   --private-key <YOUR_KEY>
+  # or 
+  # --keystore <PATH>
+  # Use the keystore in the given folder or file
+  # [env: ETH_KEYSTORE=]
+
+  # --account <ACCOUNT_NAME>  = XolotrainDeployer
+  # Use a keystore from the default keystores folder (~/.foundry/keystores) by its filename  
+  # [env: ETH_KEYSTORE_ACCOUNT=]
 
 # Generate frontend ABIs
 node scripts-js/generateTsAbis.js
@@ -35,14 +44,7 @@ cast send <AUTO_LP_HELPER_ADDRESS> "swapEthToUsdcUsdtAndMint(uint128,uint128)" \
   --value 0.001ether \
   --rpc-url http://127.0.0.1:8545 \
   --private-key <YOUR_KEY> 
-  # or 
-  # --keystore <PATH>
-  # Use the keystore in the given folder or file
-  # [env: ETH_KEYSTORE=]
-
-  # --account <ACCOUNT_NAME>
-  # Use a keystore from the default keystores folder (~/.foundry/keystores) by its filename  
-  # [env: ETH_KEYSTORE_ACCOUNT=]
+  
 ```
 
 **That's it!** The script handles:
@@ -128,7 +130,7 @@ node scripts-js/generateTsAbis.js
 
 - [ ] Ensure poolKeys.json has correct poolManager, positionManager, token addresses
 - [ ] Run `yarn deploy`
-- [ ] Update poolKeys.json USDC_USDT.hooks with mined address from output
+- [ ] Update poolKeys.json USDC_USDT.hooks AND poolId with values from deployment output
 - [ ] Set agent address with `cast send`
 - [ ] Add initial liquidity
 - [ ] Generate frontend ABIs with `node scripts-js/generateTsAbis.js`
@@ -196,10 +198,10 @@ Our deployment scripts use the CREATE2 Deployer Proxy for deterministic addresse
 - Cause: Pool doesn't exist
 - Fix: Run `forge script script/Deploy.s.sol --broadcast`
 
-**Hook address mismatch**
+**Hook address mismatch or pool not found**
 
-- Cause: poolKeys.json has wrong hook address
-- Fix: Update poolKeys.json, redeploy AutoLpHelper, run `yarn generate`
+- Cause: poolKeys.json has wrong hook address or poolId (changing hook address changes poolId)
+- Fix: Update both USDC_USDT.hooks AND USDC_USDT.poolId in poolKeys.json (values printed during deployment), redeploy AutoLpHelper, run `yarn generate`
 
 **Swap reverts**
 

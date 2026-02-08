@@ -56,7 +56,7 @@ contract VerifyPools is Script {
         if (sqrtPriceX96 > 0) {
             console.log("  Pool exists!");
             console.log("  sqrtPriceX96:", sqrtPriceX96);
-            console.log("  tick:", uint256(int256(tick)));
+            console.log("  tick:", tick);
             console.log("  lpFee:", lpFee);
         } else {
             console.log("  Pool does NOT exist (sqrtPrice is 0)");

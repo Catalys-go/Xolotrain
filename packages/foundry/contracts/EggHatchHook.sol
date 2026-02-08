@@ -15,7 +15,9 @@ interface IPetRegistry {
         uint256 petId,
         uint256 chainId,
         bytes32 poolId,
-        uint256 positionId
+        uint256 positionId,
+        int24 tickLower,
+        int24 tickUpper
     ) external returns (uint256);
 }
 
@@ -84,7 +86,7 @@ contract EggHatchHook is BaseHook {
         // - tickLower: Lower tick boundary of the LP range (informational)
         // - tickUpper: Upper tick boundary of the LP range (informational)
         // Encoded in: AutoLpHelper.unlockCallback()
-        (address owner, uint256 petId, uint256 positionId,,) = abi.decode(hookData, (address, uint256, uint256, int24, int24));
+        (address owner, uint256 petId, uint256 positionId, int24 tickLower, int24 tickUpper) = abi.decode(hookData, (address, uint256, uint256, int24, int24));
         
         // Validate hookData
         if (owner == address(0)) revert InvalidOwner();
@@ -93,7 +95,7 @@ contract EggHatchHook is BaseHook {
         // Pass petId to registry:
         // - petId = 0: Auto-derive deterministic ID (initial hatch)
         // - petId > 0: Use explicit ID (cross-chain migration)
-        REGISTRY.hatchFromHook(owner, petId, block.chainid, poolId, positionId);
+        REGISTRY.hatchFromHook(owner, petId, block.chainid, poolId, positionId, tickLower, tickUpper);
 
         return (BaseHook.afterAddLiquidity.selector, BalanceDeltaLibrary.ZERO_DELTA);
     }

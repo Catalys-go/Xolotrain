@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     PetRegistry: {
-      address: "0x1ea14470b785e33c4fc59897d46483ecfb604dd3",
+      address: "0xf4fd3907f04a2997c2d3d4610a54c8bd10daa928",
       abi: [
         {
           type: "constructor",
@@ -141,6 +141,16 @@ const deployedContracts = {
                   type: "uint256",
                   internalType: "uint256",
                 },
+                {
+                  name: "tickLower",
+                  type: "int24",
+                  internalType: "int24",
+                },
+                {
+                  name: "tickUpper",
+                  type: "int24",
+                  internalType: "int24",
+                },
               ],
             },
           ],
@@ -193,6 +203,16 @@ const deployedContracts = {
               name: "positionId",
               type: "uint256",
               internalType: "uint256",
+            },
+            {
+              name: "tickLower",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "tickUpper",
+              type: "int24",
+              internalType: "int24",
             },
           ],
           outputs: [
@@ -275,6 +295,16 @@ const deployedContracts = {
               name: "positionId",
               type: "uint256",
               internalType: "uint256",
+            },
+            {
+              name: "tickLower",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "tickUpper",
+              type: "int24",
+              internalType: "int24",
             },
           ],
           stateMutability: "view",
@@ -672,10 +702,17 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
+<<<<<<< HEAD
       deployedOnBlock: 24408793,
     },
     EggHatchHook: {
       address: "0x479a94dc64789b4bba56cd7e3e592730d0fe4400",
+=======
+      deployedOnBlock: 24409397,
+    },
+    EggHatchHook: {
+      address: "0x792f0107658f4e769b8b49f82c723cca9fa74400",
+>>>>>>> a525d71 (Update contracts with upper and lower tick tracking in order to be able to access pool info for pets, update deployment to fix some bugs)
       abi: [
         {
           type: "constructor",
@@ -1613,10 +1650,17 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
+<<<<<<< HEAD
       deployedOnBlock: 24408794,
     },
     AutoLpHelper: {
       address: "0x00d93be4b3bb154a2e1fa1650230f396311af254",
+=======
+      deployedOnBlock: 24409399,
+    },
+    AutoLpHelper: {
+      address: "0xd58c87460e4163da9f5e3c241d38b800d2d4e472",
+>>>>>>> a525d71 (Update contracts with upper and lower tick tracking in order to be able to access pool info for pets, update deployment to fix some bugs)
       abi: [
         {
           type: "constructor",
@@ -2335,7 +2379,11 @@ const deployedContracts = {
         },
       ],
       inheritedFunctions: {},
+<<<<<<< HEAD
       deployedOnBlock: 24408794,
+=======
+      deployedOnBlock: 24409398,
+>>>>>>> a525d71 (Update contracts with upper and lower tick tracking in order to be able to access pool info for pets, update deployment to fix some bugs)
     },
   },
 } as const;
