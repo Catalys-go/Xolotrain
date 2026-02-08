@@ -1,83 +1,162 @@
-# 🏗 Scaffold-ETH 2
+# 🚂 Xolotrain
 
-<h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
-  <a href="https://scaffoldeth.io">Website</a>
-</h4>
+**Xolotrain** is an onchain, agent-driven game where players hatch and nurture axolotl companions. Their health and evolution are directly tied to the real-time performance of **Uniswap v4** liquidity positions.
 
-🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Ethereum blockchain. It's designed to make it easier for developers to create and deploy smart contracts and build user interfaces that interact with those contracts.
+It combines:
 
-> [!NOTE]
-> 🤖 Scaffold-ETH 2 is AI-ready! It has everything agents need to build on Ethereum. Check `.agents/`, `.claude/`, `.opencode` or `.cursor/` for more info.
+* 🐸 **Tamagotchi-style gameplay**
+* 🧠 **Autonomous onchain agents**
+* 💧 **Uniswap v4 LP management**
+* 🚂 **Intent-based cross-chain travel** (The Compact + Li.Fi)
 
-⚙️ Built using NextJS, RainbowKit, Foundry, Wagmi, Viem, and Typescript.
+The result is a playable interface for learning and managing DeFi liquidity, where every onchain action has a clear visual and educational consequence.
 
-- ✅ **Contract Hot Reload**: Your frontend auto-adapts to your smart contract as you edit it.
-- 🪝 **[Custom hooks](https://docs.scaffoldeth.io/hooks/)**: Collection of React hooks wrapper around [wagmi](https://wagmi.sh/) to simplify interactions with smart contracts with typescript autocompletion.
-- 🧱 [**Components**](https://docs.scaffoldeth.io/components/): Collection of common web3 components to quickly build your frontend.
-- 🔥 **Burner Wallet & Local Faucet**: Quickly test your application with a burner wallet and local faucet.
-- 🔐 **Integration with Wallet Providers**: Connect to different wallet providers and interact with the Ethereum network.
+---
 
-![Debug Contracts tab](https://github.com/scaffold-eth/scaffold-eth-2/assets/55535804/b237af0c-5027-4849-a5c1-2e31495cccb1)
+## 🧠 Core Concept
 
-## Requirements
+> **LP Position Health ⇄ Axolotl Health ⇄ Player Actions**
 
-Before you begin, you need to install the following tools:
+* **Create a USDC/USDT LP** → An axolotl egg hatches.
+* **LP earns fees** → Axolotl stays healthy.
+* **LP goes out of range** → Axolotl becomes sad or critical.
+* **Rebalance / Feed** → Axolotl recovers.
+* **Bridge LP cross-chain** → Axolotl travels by train 🚂.
 
-- [Node (>= v20.18.3)](https://nodejs.org/en/download/)
-- Yarn ([v1](https://classic.yarnpkg.com/en/docs/install/) or [v2+](https://yarnpkg.com/getting-started/install))
-- [Git](https://git-scm.com/downloads)
+All mechanics are deterministic, verifiable, agent-driven, and deeply integrated with Uniswap v4.
 
-## Quickstart
+---
 
-To get started with Scaffold-ETH 2, follow the steps below:
+## 🎮 Main Features
 
-1. Install dependencies if it was skipped in CLI:
+* 🐣 **Hatching:** Create a Uniswap v4 LP to mint an axolotl.
+* ❤️ **Health System:** Deterministic health calculated from LP tick position.
+* 🍽️ **Feeding & Rebalancing:** Add liquidity or adjust ranges to heal your pet.
+* 🚂 **Cross-Chain Travel:** Intent-based LP migration via *The Compact*.
+* 🤖 **Autonomous Agent:** * Monitors LP health and updates pet state onchain.
+* Fulfills profitable travel intents.
+
+
+* 🎨 **Visual Feedback:** Animations tied directly to LP state.
+* 📚 **AI-Assisted Education:** Optional AI explanations of complex LP mechanics.
+
+---
+
+## ⚙️ Tech Stack
+
+| Component | Technology |
+| --- | --- |
+| **Smart Contracts** | Solidity, Foundry |
+| **DEX Protocol** | Uniswap v4 (PoolManager & PositionManager) |
+| **Frontend** | Next.js, React, Scaffold-ETH 2 |
+| **Web3 Tooling** | Viem, Wagmi |
+| **Interoperability** | Li.Fi SDK, The Compact (Intent Layer) |
+| **Backend/Agent** | Node.js, TypeScript |
+
+---
+
+## 📦 Requirements
+
+Before starting, ensure you have the following installed:
+
+* **Node.js** (≥ v20)
+* **Yarn**
+* **Foundry**
+* **Git**
+
+```bash
+# Verify installations
+forge --version
+anvil --version
 
 ```
-cd my-dapp-example
+
+---
+
+## 🚀 Quickstart (Local Mainnet Fork)
+
+Xolotrain requires a mainnet fork because it depends on real USDC/USDT addresses and Uniswap v4 singleton contracts.
+
+### 1. Install Dependencies
+
+```bash
 yarn install
-```
-
-2. Run a local network in the first terminal:
 
 ```
-yarn chain
-```
 
-This command starts a local Ethereum network using Foundry. The network runs on your local machine and can be used for testing and development. You can customize the network configuration in `packages/foundry/foundry.toml`.
+### 2. Set up Mainnet RPC
 
-3. On a second terminal, deploy the test contract:
+Create an Alchemy, Infura, or QuickNode RPC and export it:
 
-```
-yarn deploy
-```
-
-This command deploys a test smart contract to the local network. The contract is located in `packages/foundry/contracts` and can be modified to suit your needs. The `yarn deploy` command uses the deploy script located in `packages/foundry/script` to deploy the contract to the network. You can also customize the deploy script.
-
-4. On a third terminal, start your NextJS app:
+```bash
+export MAINNET_RPC="https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY"
 
 ```
+
+### 3. Start a Mainnet Fork (Anvil)
+
+Run Anvil in its own terminal window:
+
+```bash
+anvil \
+  --fork-url "$MAINNET_RPC" \
+  --chain-id 31337 \
+  --port 8545
+
+```
+
+### 4. Deploy Contracts
+
+In a new terminal, deploy the suite to your local fork:
+
+```bash
+cd packages/foundry
+yarn deploy --rpc-url http://127.0.0.1:8545
+
+```
+
+*This deploys `PetRegistry`, `AutoLpHelper`, `EggHatchHook`, and necessary Uniswap v4 integrations.*
+
+### 5. Run the Frontend
+
+```bash
+cd packages/nextjs
+yarn dev
+
+```
+
+Navigate to [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000) to start your journey.
+
+---
+
+## 🤖 Running the Agent (Optional)
+
+The agent monitors LP positions and updates axolotl health onchain.
+
+```bash
+cd packages/agent
+yarn install
+yarn build
 yarn start
+
 ```
 
-Visit your app on: `http://localhost:3000`. You can interact with your smart contract using the `Debug Contracts` page. You can tweak the app config in `packages/nextjs/scaffold.config.ts`.
+For more details on solver logic, see: [AGENT_DESIGN.md](https://www.google.com/search?q=docs/ai/design/AGENT_DESIGN.md).
 
-Run smart contract test with `yarn foundry:test`
+---
 
-- Edit your smart contracts in `packages/foundry/contracts`
-- Edit your frontend homepage at `packages/nextjs/app/page.tsx`. For guidance on [routing](https://nextjs.org/docs/app/building-your-application/routing/defining-routes) and configuring [pages/layouts](https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts) checkout the Next.js documentation.
-- Edit your deployment scripts in `packages/foundry/script`
+## 🧪 Development Workflow
 
+* **Contracts:** `cd packages/foundry && forge test`
+* **Frontend:** `cd packages/nextjs && yarn dev`
+* **Agent:** `cd packages/agent && yarn start`
 
-## Documentation
+---
 
-Visit our [docs](https://docs.scaffoldeth.io) to learn how to start building with Scaffold-ETH 2.
+## 🧭 Design Documentation
 
-To know more about its features, check out our [website](https://scaffoldeth.io).
+* **Game Loop & Mechanics:** [GAME_DESIGN.md](https://www.google.com/search?q=docs/ai/design/GAME_DESIGN.md)
+* **User Interactions & UI Flows:** [INTERACTIONS.md](https://www.google.com/search?q=docs/ai/design/INTERACTIONS.md)
+* **Agent Architecture:** [AGENT_DESIGN.md](https://www.google.com/search?q=docs/ai/design/AGENT_DESIGN.md)
 
-## Contributing to Scaffold-ETH 2
-
-We welcome contributions to Scaffold-ETH 2!
-
-Please see [CONTRIBUTING.MD](https://github.com/scaffold-eth/scaffold-eth-2/blob/main/CONTRIBUTING.md) for more information and guidelines for contributing to Scaffold-ETH 2.
+---
