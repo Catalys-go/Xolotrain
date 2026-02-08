@@ -1,5 +1,5 @@
 # 🚂 Xolotrain
-
+## Developed at [HackMoney 2026](https://ethglobal.com/showcase/xolotrain-e35q2).  
 **Xolotrain** is an onchain, agent-driven game where players hatch and nurture axolotl companions. Their health and evolution are directly tied to the real-time performance of **Uniswap v4** liquidity positions.
 
 It combines:
