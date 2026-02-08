@@ -6,8 +6,477 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 
 const deployedContracts = {
   31337: {
+    AutoLpHelper: {
+      address: "0x432bdb1b79f5edd44db1cc8e5dc41fcfa55a163c",
+      abi: [
+        {
+          type: "constructor",
+          inputs: [
+            {
+              name: "_poolManager",
+              type: "address",
+              internalType: "contract IPoolManager",
+            },
+            {
+              name: "_posm",
+              type: "address",
+              internalType: "contract IPositionManager",
+            },
+            {
+              name: "_ethUsdcPoolKey",
+              type: "tuple",
+              internalType: "struct PoolKey",
+              components: [
+                {
+                  name: "currency0",
+                  type: "address",
+                  internalType: "Currency",
+                },
+                {
+                  name: "currency1",
+                  type: "address",
+                  internalType: "Currency",
+                },
+                {
+                  name: "fee",
+                  type: "uint24",
+                  internalType: "uint24",
+                },
+                {
+                  name: "tickSpacing",
+                  type: "int24",
+                  internalType: "int24",
+                },
+                {
+                  name: "hooks",
+                  type: "address",
+                  internalType: "contract IHooks",
+                },
+              ],
+            },
+            {
+              name: "_ethUsdtPoolKey",
+              type: "tuple",
+              internalType: "struct PoolKey",
+              components: [
+                {
+                  name: "currency0",
+                  type: "address",
+                  internalType: "Currency",
+                },
+                {
+                  name: "currency1",
+                  type: "address",
+                  internalType: "Currency",
+                },
+                {
+                  name: "fee",
+                  type: "uint24",
+                  internalType: "uint24",
+                },
+                {
+                  name: "tickSpacing",
+                  type: "int24",
+                  internalType: "int24",
+                },
+                {
+                  name: "hooks",
+                  type: "address",
+                  internalType: "contract IHooks",
+                },
+              ],
+            },
+            {
+              name: "_usdcUsdtPoolKey",
+              type: "tuple",
+              internalType: "struct PoolKey",
+              components: [
+                {
+                  name: "currency0",
+                  type: "address",
+                  internalType: "Currency",
+                },
+                {
+                  name: "currency1",
+                  type: "address",
+                  internalType: "Currency",
+                },
+                {
+                  name: "fee",
+                  type: "uint24",
+                  internalType: "uint24",
+                },
+                {
+                  name: "tickSpacing",
+                  type: "int24",
+                  internalType: "int24",
+                },
+                {
+                  name: "hooks",
+                  type: "address",
+                  internalType: "contract IHooks",
+                },
+              ],
+            },
+            {
+              name: "_tickSpacing",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "_tickLowerOffset",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "_tickUpperOffset",
+              type: "int24",
+              internalType: "int24",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "receive",
+          stateMutability: "payable",
+        },
+        {
+          type: "function",
+          name: "DEFAULT_SLIPPAGE_BPS",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "POOL_MANAGER",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract IPoolManager",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "POSM",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "contract IPositionManager",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "TICK_LOWER_OFFSET",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "int24",
+              internalType: "int24",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "TICK_SPACING",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "int24",
+              internalType: "int24",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "TICK_UPPER_OFFSET",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "int24",
+              internalType: "int24",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "ethUsdcPoolKey",
+          inputs: [],
+          outputs: [
+            {
+              name: "currency0",
+              type: "address",
+              internalType: "Currency",
+            },
+            {
+              name: "currency1",
+              type: "address",
+              internalType: "Currency",
+            },
+            {
+              name: "fee",
+              type: "uint24",
+              internalType: "uint24",
+            },
+            {
+              name: "tickSpacing",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "hooks",
+              type: "address",
+              internalType: "contract IHooks",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "ethUsdtPoolKey",
+          inputs: [],
+          outputs: [
+            {
+              name: "currency0",
+              type: "address",
+              internalType: "Currency",
+            },
+            {
+              name: "currency1",
+              type: "address",
+              internalType: "Currency",
+            },
+            {
+              name: "fee",
+              type: "uint24",
+              internalType: "uint24",
+            },
+            {
+              name: "tickSpacing",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "hooks",
+              type: "address",
+              internalType: "contract IHooks",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "quoteSwapOutputs",
+          inputs: [
+            {
+              name: "ethAmount",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+          outputs: [
+            {
+              name: "usdcOut",
+              type: "uint128",
+              internalType: "uint128",
+            },
+            {
+              name: "usdtOut",
+              type: "uint128",
+              internalType: "uint128",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "swapEthToUsdcUsdtAndMint",
+          inputs: [
+            {
+              name: "minUsdcOut",
+              type: "uint128",
+              internalType: "uint128",
+            },
+            {
+              name: "minUsdtOut",
+              type: "uint128",
+              internalType: "uint128",
+            },
+          ],
+          outputs: [
+            {
+              name: "liquidity",
+              type: "uint128",
+              internalType: "uint128",
+            },
+          ],
+          stateMutability: "payable",
+        },
+        {
+          type: "function",
+          name: "unlockCallback",
+          inputs: [
+            {
+              name: "data",
+              type: "bytes",
+              internalType: "bytes",
+            },
+          ],
+          outputs: [
+            {
+              name: "",
+              type: "bytes",
+              internalType: "bytes",
+            },
+          ],
+          stateMutability: "nonpayable",
+        },
+        {
+          type: "function",
+          name: "usdcUsdtPoolKey",
+          inputs: [],
+          outputs: [
+            {
+              name: "currency0",
+              type: "address",
+              internalType: "Currency",
+            },
+            {
+              name: "currency1",
+              type: "address",
+              internalType: "Currency",
+            },
+            {
+              name: "fee",
+              type: "uint24",
+              internalType: "uint24",
+            },
+            {
+              name: "tickSpacing",
+              type: "int24",
+              internalType: "int24",
+            },
+            {
+              name: "hooks",
+              type: "address",
+              internalType: "contract IHooks",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "event",
+          name: "LiquidityAdded",
+          inputs: [
+            {
+              name: "owner",
+              type: "address",
+              indexed: true,
+              internalType: "address",
+            },
+            {
+              name: "tokenId",
+              type: "uint256",
+              indexed: true,
+              internalType: "uint256",
+            },
+            {
+              name: "ethInput",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "usdcAmount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "usdtAmount",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+            {
+              name: "tickLower",
+              type: "int24",
+              indexed: false,
+              internalType: "int24",
+            },
+            {
+              name: "tickUpper",
+              type: "int24",
+              indexed: false,
+              internalType: "int24",
+            },
+            {
+              name: "liquidity",
+              type: "uint128",
+              indexed: false,
+              internalType: "uint128",
+            },
+            {
+              name: "timestamp",
+              type: "uint256",
+              indexed: false,
+              internalType: "uint256",
+            },
+          ],
+          anonymous: false,
+        },
+        {
+          type: "error",
+          name: "InsufficientOutput",
+          inputs: [
+            {
+              name: "expected",
+              type: "uint256",
+              internalType: "uint256",
+            },
+            {
+              name: "actual",
+              type: "uint256",
+              internalType: "uint256",
+            },
+          ],
+        },
+        {
+          type: "error",
+          name: "UnauthorizedCaller",
+          inputs: [],
+        },
+        {
+          type: "error",
+          name: "ZeroInput",
+          inputs: [],
+        },
+      ],
+      inheritedFunctions: {},
+      deployedOnBlock: 24391360,
+    },
     PetRegistry: {
-      address: "0x8f586e2c0043cf5eee564303d01777c6c735bfc0",
+      address: "0xb288315b51e6fac212513e1a7c70232fa584bbb9",
       abi: [
         {
           type: "constructor",
@@ -141,16 +610,6 @@ const deployedContracts = {
                   type: "uint256",
                   internalType: "uint256",
                 },
-                {
-                  name: "tickLower",
-                  type: "int24",
-                  internalType: "int24",
-                },
-                {
-                  name: "tickUpper",
-                  type: "int24",
-                  internalType: "int24",
-                },
               ],
             },
           ],
@@ -185,11 +644,6 @@ const deployedContracts = {
               internalType: "address",
             },
             {
-              name: "petId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
               name: "chainId",
               type: "uint256",
               internalType: "uint256",
@@ -204,20 +658,10 @@ const deployedContracts = {
               type: "uint256",
               internalType: "uint256",
             },
-            {
-              name: "tickLower",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "tickUpper",
-              type: "int24",
-              internalType: "int24",
-            },
           ],
           outputs: [
             {
-              name: "",
+              name: "petId",
               type: "uint256",
               internalType: "uint256",
             },
@@ -233,6 +677,19 @@ const deployedContracts = {
               name: "",
               type: "address",
               internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
+          name: "nextId",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "uint256",
+              internalType: "uint256",
             },
           ],
           stateMutability: "view",
@@ -295,16 +752,6 @@ const deployedContracts = {
               name: "positionId",
               type: "uint256",
               internalType: "uint256",
-            },
-            {
-              name: "tickLower",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "tickUpper",
-              type: "int24",
-              internalType: "int24",
             },
           ],
           stateMutability: "view",
@@ -679,47 +1126,12 @@ const deployedContracts = {
             },
           ],
         },
-        {
-          type: "error",
-          name: "PetOwnerMismatch",
-          inputs: [
-            {
-              name: "petId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "expected",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "actual",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
       ],
       inheritedFunctions: {},
-<<<<<<< HEAD
-<<<<<<< HEAD
-      deployedOnBlock: 24408793,
+      deployedOnBlock: 24391360,
     },
     EggHatchHook: {
-      address: "0x479a94dc64789b4bba56cd7e3e592730d0fe4400",
-=======
-      deployedOnBlock: 24409397,
-    },
-    EggHatchHook: {
-      address: "0x792f0107658f4e769b8b49f82c723cca9fa74400",
->>>>>>> a525d71 (Update contracts with upper and lower tick tracking in order to be able to access pool info for pets, update deployment to fix some bugs)
-=======
-      deployedOnBlock: 24410088,
-    },
-    EggHatchHook: {
-      address: "0x70d8d9b84d943ff4a69b63cf45dcd90d88794400",
->>>>>>> 6e78075 (Refactor autoLpHelper contract - travelToChain, add LP position closing functionality and events, add security/type safety enhancements and safe transfers, update deployer scripts and helpers to properly assign owner)
+      address: "0x33e0799e791d3057d20eed1dfb5db2f21d160400",
       abi: [
         {
           type: "constructor",
@@ -739,6 +1151,19 @@ const deployedContracts = {
         },
         {
           type: "function",
+          name: "POOL_MANAGER",
+          inputs: [],
+          outputs: [
+            {
+              name: "",
+              type: "address",
+              internalType: "address",
+            },
+          ],
+          stateMutability: "view",
+        },
+        {
+          type: "function",
           name: "REGISTRY",
           inputs: [],
           outputs: [
@@ -755,7 +1180,7 @@ const deployedContracts = {
           name: "afterAddLiquidity",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
@@ -792,7 +1217,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "params",
+              name: "",
               type: "tuple",
               internalType: "struct ModifyLiquidityParams",
               components: [
@@ -819,12 +1244,12 @@ const deployedContracts = {
               ],
             },
             {
-              name: "delta",
+              name: "",
               type: "int256",
               internalType: "BalanceDelta",
             },
             {
-              name: "feesAccrued",
+              name: "",
               type: "int256",
               internalType: "BalanceDelta",
             },
@@ -853,12 +1278,12 @@ const deployedContracts = {
           name: "afterDonate",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
             {
-              name: "key",
+              name: "",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -890,17 +1315,17 @@ const deployedContracts = {
               ],
             },
             {
-              name: "amount0",
+              name: "",
               type: "uint256",
               internalType: "uint256",
             },
             {
-              name: "amount1",
+              name: "",
               type: "uint256",
               internalType: "uint256",
             },
             {
-              name: "hookData",
+              name: "",
               type: "bytes",
               internalType: "bytes",
             },
@@ -912,19 +1337,19 @@ const deployedContracts = {
               internalType: "bytes4",
             },
           ],
-          stateMutability: "nonpayable",
+          stateMutability: "pure",
         },
         {
           type: "function",
           name: "afterInitialize",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
             {
-              name: "key",
+              name: "",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -956,12 +1381,12 @@ const deployedContracts = {
               ],
             },
             {
-              name: "sqrtPriceX96",
+              name: "",
               type: "uint160",
               internalType: "uint160",
             },
             {
-              name: "tick",
+              name: "",
               type: "int24",
               internalType: "int24",
             },
@@ -973,19 +1398,19 @@ const deployedContracts = {
               internalType: "bytes4",
             },
           ],
-          stateMutability: "nonpayable",
+          stateMutability: "pure",
         },
         {
           type: "function",
           name: "afterRemoveLiquidity",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
             {
-              name: "key",
+              name: "",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -1017,7 +1442,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "params",
+              name: "",
               type: "tuple",
               internalType: "struct ModifyLiquidityParams",
               components: [
@@ -1044,17 +1469,17 @@ const deployedContracts = {
               ],
             },
             {
-              name: "delta",
+              name: "",
               type: "int256",
               internalType: "BalanceDelta",
             },
             {
-              name: "feesAccrued",
+              name: "",
               type: "int256",
               internalType: "BalanceDelta",
             },
             {
-              name: "hookData",
+              name: "",
               type: "bytes",
               internalType: "bytes",
             },
@@ -1071,19 +1496,19 @@ const deployedContracts = {
               internalType: "BalanceDelta",
             },
           ],
-          stateMutability: "nonpayable",
+          stateMutability: "pure",
         },
         {
           type: "function",
           name: "afterSwap",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
             {
-              name: "key",
+              name: "",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -1115,7 +1540,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "params",
+              name: "",
               type: "tuple",
               internalType: "struct SwapParams",
               components: [
@@ -1137,12 +1562,12 @@ const deployedContracts = {
               ],
             },
             {
-              name: "delta",
+              name: "",
               type: "int256",
               internalType: "BalanceDelta",
             },
             {
-              name: "hookData",
+              name: "",
               type: "bytes",
               internalType: "bytes",
             },
@@ -1159,19 +1584,19 @@ const deployedContracts = {
               internalType: "int128",
             },
           ],
-          stateMutability: "nonpayable",
+          stateMutability: "pure",
         },
         {
           type: "function",
           name: "beforeAddLiquidity",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
             {
-              name: "key",
+              name: "",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -1203,7 +1628,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "params",
+              name: "",
               type: "tuple",
               internalType: "struct ModifyLiquidityParams",
               components: [
@@ -1230,7 +1655,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "hookData",
+              name: "",
               type: "bytes",
               internalType: "bytes",
             },
@@ -1242,19 +1667,19 @@ const deployedContracts = {
               internalType: "bytes4",
             },
           ],
-          stateMutability: "nonpayable",
+          stateMutability: "pure",
         },
         {
           type: "function",
           name: "beforeDonate",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
             {
-              name: "key",
+              name: "",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -1286,17 +1711,17 @@ const deployedContracts = {
               ],
             },
             {
-              name: "amount0",
+              name: "",
               type: "uint256",
               internalType: "uint256",
             },
             {
-              name: "amount1",
+              name: "",
               type: "uint256",
               internalType: "uint256",
             },
             {
-              name: "hookData",
+              name: "",
               type: "bytes",
               internalType: "bytes",
             },
@@ -1308,19 +1733,19 @@ const deployedContracts = {
               internalType: "bytes4",
             },
           ],
-          stateMutability: "nonpayable",
+          stateMutability: "pure",
         },
         {
           type: "function",
           name: "beforeInitialize",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
             {
-              name: "key",
+              name: "",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -1352,7 +1777,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "sqrtPriceX96",
+              name: "",
               type: "uint160",
               internalType: "uint160",
             },
@@ -1364,19 +1789,19 @@ const deployedContracts = {
               internalType: "bytes4",
             },
           ],
-          stateMutability: "nonpayable",
+          stateMutability: "pure",
         },
         {
           type: "function",
           name: "beforeRemoveLiquidity",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
             {
-              name: "key",
+              name: "",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -1408,7 +1833,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "params",
+              name: "",
               type: "tuple",
               internalType: "struct ModifyLiquidityParams",
               components: [
@@ -1435,7 +1860,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "hookData",
+              name: "",
               type: "bytes",
               internalType: "bytes",
             },
@@ -1447,19 +1872,19 @@ const deployedContracts = {
               internalType: "bytes4",
             },
           ],
-          stateMutability: "nonpayable",
+          stateMutability: "pure",
         },
         {
           type: "function",
           name: "beforeSwap",
           inputs: [
             {
-              name: "sender",
+              name: "",
               type: "address",
               internalType: "address",
             },
             {
-              name: "key",
+              name: "",
               type: "tuple",
               internalType: "struct PoolKey",
               components: [
@@ -1491,7 +1916,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "params",
+              name: "",
               type: "tuple",
               internalType: "struct SwapParams",
               components: [
@@ -1513,7 +1938,7 @@ const deployedContracts = {
               ],
             },
             {
-              name: "hookData",
+              name: "",
               type: "bytes",
               internalType: "bytes",
             },
@@ -1535,1000 +1960,22 @@ const deployedContracts = {
               internalType: "uint24",
             },
           ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "getHookPermissions",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "tuple",
-              internalType: "struct Hooks.Permissions",
-              components: [
-                {
-                  name: "beforeInitialize",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "afterInitialize",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "beforeAddLiquidity",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "afterAddLiquidity",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "beforeRemoveLiquidity",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "afterRemoveLiquidity",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "beforeSwap",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "afterSwap",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "beforeDonate",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "afterDonate",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "beforeSwapReturnDelta",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "afterSwapReturnDelta",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "afterAddLiquidityReturnDelta",
-                  type: "bool",
-                  internalType: "bool",
-                },
-                {
-                  name: "afterRemoveLiquidityReturnDelta",
-                  type: "bool",
-                  internalType: "bool",
-                },
-              ],
-            },
-          ],
           stateMutability: "pure",
         },
         {
-          type: "function",
-          name: "poolManager",
-          inputs: [],
-          outputs: [
+          type: "error",
+          name: "OnlyPoolManager",
+          inputs: [
             {
-              name: "",
+              name: "caller",
               type: "address",
-              internalType: "contract IPoolManager",
+              internalType: "address",
             },
           ],
-          stateMutability: "view",
-        },
-        {
-          type: "error",
-          name: "HookNotImplemented",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InvalidOwner",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "InvalidPositionId",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "NotPoolManager",
-          inputs: [],
         },
       ],
       inheritedFunctions: {},
-<<<<<<< HEAD
-<<<<<<< HEAD
-      deployedOnBlock: 24408794,
-    },
-    AutoLpHelper: {
-      address: "0x00d93be4b3bb154a2e1fa1650230f396311af254",
-=======
-      deployedOnBlock: 24409399,
-    },
-    AutoLpHelper: {
-      address: "0xd58c87460e4163da9f5e3c241d38b800d2d4e472",
->>>>>>> a525d71 (Update contracts with upper and lower tick tracking in order to be able to access pool info for pets, update deployment to fix some bugs)
-=======
-      deployedOnBlock: 24410090,
-    },
-    AutoLpHelper: {
-      address: "0xe5772466cbba37499767879f9085bf6c7d7647f5",
->>>>>>> 6e78075 (Refactor autoLpHelper contract - travelToChain, add LP position closing functionality and events, add security/type safety enhancements and safe transfers, update deployer scripts and helpers to properly assign owner)
-      abi: [
-        {
-          type: "constructor",
-          inputs: [
-            {
-              name: "_poolManager",
-              type: "address",
-              internalType: "contract IPoolManager",
-            },
-            {
-              name: "_posm",
-              type: "address",
-              internalType: "contract IPositionManager",
-            },
-            {
-              name: "_ethUsdcPoolKey",
-              type: "tuple",
-              internalType: "struct PoolKey",
-              components: [
-                {
-                  name: "currency0",
-                  type: "address",
-                  internalType: "Currency",
-                },
-                {
-                  name: "currency1",
-                  type: "address",
-                  internalType: "Currency",
-                },
-                {
-                  name: "fee",
-                  type: "uint24",
-                  internalType: "uint24",
-                },
-                {
-                  name: "tickSpacing",
-                  type: "int24",
-                  internalType: "int24",
-                },
-                {
-                  name: "hooks",
-                  type: "address",
-                  internalType: "contract IHooks",
-                },
-              ],
-            },
-            {
-              name: "_ethUsdtPoolKey",
-              type: "tuple",
-              internalType: "struct PoolKey",
-              components: [
-                {
-                  name: "currency0",
-                  type: "address",
-                  internalType: "Currency",
-                },
-                {
-                  name: "currency1",
-                  type: "address",
-                  internalType: "Currency",
-                },
-                {
-                  name: "fee",
-                  type: "uint24",
-                  internalType: "uint24",
-                },
-                {
-                  name: "tickSpacing",
-                  type: "int24",
-                  internalType: "int24",
-                },
-                {
-                  name: "hooks",
-                  type: "address",
-                  internalType: "contract IHooks",
-                },
-              ],
-            },
-            {
-              name: "_usdcUsdtPoolKey",
-              type: "tuple",
-              internalType: "struct PoolKey",
-              components: [
-                {
-                  name: "currency0",
-                  type: "address",
-                  internalType: "Currency",
-                },
-                {
-                  name: "currency1",
-                  type: "address",
-                  internalType: "Currency",
-                },
-                {
-                  name: "fee",
-                  type: "uint24",
-                  internalType: "uint24",
-                },
-                {
-                  name: "tickSpacing",
-                  type: "int24",
-                  internalType: "int24",
-                },
-                {
-                  name: "hooks",
-                  type: "address",
-                  internalType: "contract IHooks",
-                },
-              ],
-            },
-            {
-              name: "_tickSpacing",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "_tickLowerOffset",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "_tickUpperOffset",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "initialOwner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "receive",
-          stateMutability: "payable",
-        },
-        {
-          type: "function",
-          name: "DEFAULT_SLIPPAGE_BPS",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "POOL_MANAGER",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract IPoolManager",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "POSM",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "contract IPositionManager",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "TICK_LOWER_OFFSET",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "int24",
-              internalType: "int24",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "TICK_SPACING",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "int24",
-              internalType: "int24",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "TICK_UPPER_OFFSET",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "int24",
-              internalType: "int24",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "ethUsdcPoolKey",
-          inputs: [],
-          outputs: [
-            {
-              name: "currency0",
-              type: "address",
-              internalType: "Currency",
-            },
-            {
-              name: "currency1",
-              type: "address",
-              internalType: "Currency",
-            },
-            {
-              name: "fee",
-              type: "uint24",
-              internalType: "uint24",
-            },
-            {
-              name: "tickSpacing",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "hooks",
-              type: "address",
-              internalType: "contract IHooks",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "ethUsdtPoolKey",
-          inputs: [],
-          outputs: [
-            {
-              name: "currency0",
-              type: "address",
-              internalType: "Currency",
-            },
-            {
-              name: "currency1",
-              type: "address",
-              internalType: "Currency",
-            },
-            {
-              name: "fee",
-              type: "uint24",
-              internalType: "uint24",
-            },
-            {
-              name: "tickSpacing",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "hooks",
-              type: "address",
-              internalType: "contract IHooks",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "mintLpFromTokens",
-          inputs: [
-            {
-              name: "petId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "usdcAmount",
-              type: "uint128",
-              internalType: "uint128",
-            },
-            {
-              name: "usdtAmount",
-              type: "uint128",
-              internalType: "uint128",
-            },
-            {
-              name: "tickLower",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "tickUpper",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "recipient",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [
-            {
-              name: "positionId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "mintLpFromUsdcOnly",
-          inputs: [
-            {
-              name: "petId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "usdcAmount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "tickLower",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "tickUpper",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "recipient",
-              type: "address",
-              internalType: "address",
-            },
-            {
-              name: "minUsdtOut",
-              type: "uint128",
-              internalType: "uint128",
-            },
-          ],
-          outputs: [
-            {
-              name: "positionId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "owner",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "petRegistry",
-          inputs: [],
-          outputs: [
-            {
-              name: "",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "quoteLiquidityBurn",
-          inputs: [
-            {
-              name: "petId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "totalUsdcEstimate",
-              type: "uint128",
-              internalType: "uint128",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "quoteSwapOutputs",
-          inputs: [
-            {
-              name: "ethAmount",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-          outputs: [
-            {
-              name: "usdcOut",
-              type: "uint128",
-              internalType: "uint128",
-            },
-            {
-              name: "usdtOut",
-              type: "uint128",
-              internalType: "uint128",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "function",
-          name: "renounceOwnership",
-          inputs: [],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "setPetRegistry",
-          inputs: [
-            {
-              name: "_petRegistry",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "swapEthToUsdcUsdtAndMint",
-          inputs: [
-            {
-              name: "minUsdcOut",
-              type: "uint128",
-              internalType: "uint128",
-            },
-            {
-              name: "minUsdtOut",
-              type: "uint128",
-              internalType: "uint128",
-            },
-          ],
-          outputs: [
-            {
-              name: "liquidity",
-              type: "uint128",
-              internalType: "uint128",
-            },
-          ],
-          stateMutability: "payable",
-        },
-        {
-          type: "function",
-          name: "transferOwnership",
-          inputs: [
-            {
-              name: "newOwner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-          outputs: [],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "travelToChain",
-          inputs: [
-            {
-              name: "petId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "destinationChainId",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "minUsdcOut",
-              type: "uint128",
-              internalType: "uint128",
-            },
-          ],
-          outputs: [
-            {
-              name: "totalUsdc",
-              type: "uint128",
-              internalType: "uint128",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "unlockCallback",
-          inputs: [
-            {
-              name: "data",
-              type: "bytes",
-              internalType: "bytes",
-            },
-          ],
-          outputs: [
-            {
-              name: "",
-              type: "bytes",
-              internalType: "bytes",
-            },
-          ],
-          stateMutability: "nonpayable",
-        },
-        {
-          type: "function",
-          name: "usdcUsdtPoolKey",
-          inputs: [],
-          outputs: [
-            {
-              name: "currency0",
-              type: "address",
-              internalType: "Currency",
-            },
-            {
-              name: "currency1",
-              type: "address",
-              internalType: "Currency",
-            },
-            {
-              name: "fee",
-              type: "uint24",
-              internalType: "uint24",
-            },
-            {
-              name: "tickSpacing",
-              type: "int24",
-              internalType: "int24",
-            },
-            {
-              name: "hooks",
-              type: "address",
-              internalType: "contract IHooks",
-            },
-          ],
-          stateMutability: "view",
-        },
-        {
-          type: "event",
-          name: "LiquidityAdded",
-          inputs: [
-            {
-              name: "owner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "tokenId",
-              type: "uint256",
-              indexed: true,
-              internalType: "uint256",
-            },
-            {
-              name: "ethInput",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "usdcAmount",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "usdtAmount",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "tickLower",
-              type: "int24",
-              indexed: false,
-              internalType: "int24",
-            },
-            {
-              name: "tickUpper",
-              type: "int24",
-              indexed: false,
-              internalType: "int24",
-            },
-            {
-              name: "liquidity",
-              type: "uint128",
-              indexed: false,
-              internalType: "uint128",
-            },
-            {
-              name: "timestamp",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "LiquidityRemoved",
-          inputs: [
-            {
-              name: "petId",
-              type: "uint256",
-              indexed: true,
-              internalType: "uint256",
-            },
-            {
-              name: "owner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "usdcAmount",
-              type: "uint128",
-              indexed: false,
-              internalType: "uint128",
-            },
-            {
-              name: "usdtAmount",
-              type: "uint128",
-              indexed: false,
-              internalType: "uint128",
-            },
-            {
-              name: "totalUsdcOut",
-              type: "uint128",
-              indexed: false,
-              internalType: "uint128",
-            },
-            {
-              name: "timestamp",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "OwnershipTransferred",
-          inputs: [
-            {
-              name: "previousOwner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "newOwner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "event",
-          name: "TravelInitiated",
-          inputs: [
-            {
-              name: "petId",
-              type: "uint256",
-              indexed: true,
-              internalType: "uint256",
-            },
-            {
-              name: "owner",
-              type: "address",
-              indexed: true,
-              internalType: "address",
-            },
-            {
-              name: "destinationChainId",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-            {
-              name: "usdcAmount",
-              type: "uint128",
-              indexed: false,
-              internalType: "uint128",
-            },
-            {
-              name: "timestamp",
-              type: "uint256",
-              indexed: false,
-              internalType: "uint256",
-            },
-          ],
-          anonymous: false,
-        },
-        {
-          type: "error",
-          name: "InsufficientLiquidity",
-          inputs: [
-            {
-              name: "actual",
-              type: "uint128",
-              internalType: "uint128",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "InsufficientOutput",
-          inputs: [
-            {
-              name: "expected",
-              type: "uint256",
-              internalType: "uint256",
-            },
-            {
-              name: "actual",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "OwnableInvalidOwner",
-          inputs: [
-            {
-              name: "owner",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "OwnableUnauthorizedAccount",
-          inputs: [
-            {
-              name: "account",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "PositionAlreadyBurned",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "ReentrancyGuardReentrantCall",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "SafeCastOverflowedIntToUint",
-          inputs: [
-            {
-              name: "value",
-              type: "int256",
-              internalType: "int256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "SafeCastOverflowedUintDowncast",
-          inputs: [
-            {
-              name: "bits",
-              type: "uint8",
-              internalType: "uint8",
-            },
-            {
-              name: "value",
-              type: "uint256",
-              internalType: "uint256",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "SafeERC20FailedOperation",
-          inputs: [
-            {
-              name: "token",
-              type: "address",
-              internalType: "address",
-            },
-          ],
-        },
-        {
-          type: "error",
-          name: "UnauthorizedCaller",
-          inputs: [],
-        },
-        {
-          type: "error",
-          name: "ZeroInput",
-          inputs: [],
-        },
-      ],
-      inheritedFunctions: {},
-<<<<<<< HEAD
-<<<<<<< HEAD
-      deployedOnBlock: 24408794,
-=======
-      deployedOnBlock: 24409398,
->>>>>>> a525d71 (Update contracts with upper and lower tick tracking in order to be able to access pool info for pets, update deployment to fix some bugs)
-=======
-      deployedOnBlock: 24410090,
->>>>>>> 6e78075 (Refactor autoLpHelper contract - travelToChain, add LP position closing functionality and events, add security/type safety enhancements and safe transfers, update deployer scripts and helpers to properly assign owner)
+      deployedOnBlock: 24391360,
     },
   },
 } as const;
